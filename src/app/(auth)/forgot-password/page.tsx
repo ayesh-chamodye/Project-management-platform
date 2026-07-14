@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import Link from "next/link";
-import { Mail } from "lucide-react";
+import { Mail, ArrowLeft } from "lucide-react";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -28,30 +28,31 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-black px-4">
-      <div className="max-w-md w-full space-y-8">
+    <div className="min-h-screen flex items-center justify-center px-4" style={{ backgroundColor: "var(--color-background)" }}>
+      <div className="w-full max-w-md space-y-6">
         <div className="text-center">
-          <h2 className="text-3xl font-bold text-gray-900 dark:text-white">Reset password</h2>
-          <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">We'll send you a reset link</p>
+          <Link href="/login" className="inline-flex items-center gap-2 mb-6" style={{ color: "var(--color-muted-foreground)" }}>
+            <ArrowLeft className="h-4 w-4" />
+            Back to login
+          </Link>
+          <h2 className="text-3xl font-bold" style={{ color: "var(--color-foreground)" }}>Reset password</h2>
+          <p className="mt-2 text-sm" style={{ color: "var(--color-muted-foreground)" }}>We'll send you a reset link</p>
         </div>
-        <div className="bg-white dark:bg-zinc-900 p-8 rounded-lg shadow space-y-6">
-          {message && <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-600 dark:text-green-400 px-4 py-3 rounded-lg text-sm">{message}</div>}
-          {error && <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 px-4 py-3 rounded-lg text-sm">{error}</div>}
+
+        <div className="surface rounded-xl p-8 space-y-6">
+          {message && <div className="px-4 py-3 rounded-lg text-sm" style={{ backgroundColor: "rgba(22, 163, 74, 0.1)", color: "var(--color-success)", border: "1px solid rgba(22, 163, 74, 0.2)" }}>{message}</div>}
+          {error && <div className="px-4 py-3 rounded-lg text-sm" style={{ backgroundColor: "rgba(220, 38, 38, 0.1)", color: "var(--color-danger)", border: "1px solid rgba(220, 38, 38, 0.2)" }}>{error}</div>}
+
           <form onSubmit={handleReset} className="space-y-4">
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email address</label>
+              <label htmlFor="email" className="label">Email address</label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-                <input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="w-full pl-10 pr-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white" placeholder="you@example.com" />
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5" style={{ color: "var(--color-muted-foreground)" }} />
+                <input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="input-field pl-10" placeholder="you@example.com" />
               </div>
             </div>
-            <button type="submit" className="w-full flex items-center justify-center py-2.5 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 transition-colors">
-              Send reset link
-            </button>
+            <button type="submit" className="btn-primary w-full">Send reset link</button>
           </form>
-          <p className="text-center text-sm text-gray-600 dark:text-gray-400">
-            <Link href="/login" className="font-medium text-indigo-600 hover:text-indigo-500">Back to login</Link>
-          </p>
         </div>
       </div>
     </div>

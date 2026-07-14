@@ -4,22 +4,21 @@ import { useState, useEffect } from "react";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import AppShell from "@/components/AppShell";
+import { FolderKanban, CheckCircle2, Clock, AlertTriangle } from "lucide-react";
+
+const statsCards = [
+  { label: "Total Projects", key: "projects", icon: FolderKanban },
+  { label: "Completed Tasks", key: "completed", icon: CheckCircle2 },
+  { label: "In Progress", key: "inProgress", icon: Clock },
+  { label: "Upcoming Deadlines", key: "upcoming", icon: AlertTriangle },
+];
 
 export default function DashboardClient() {
   const supabase = getSupabaseClient();
   const router = useRouter();
-  const [user, setUser] = useState<{ email?: string } | null>(null);
   const [stats, setStats] = useState({ projects: 0, completed: 0, inProgress: 0, upcoming: 0 });
-
-  useEffect(() => {
-    const fetchUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        setUser({ email: session.user.email || undefined });
-      }
-    };
-    fetchUser();
-  }, [supabase]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -35,45 +34,54 @@ export default function DashboardClient() {
         inProgress: inProgressCount || 0,
         upcoming: upcomingTasks?.length || 0,
       });
+      setLoading(false);
     };
     fetchStats();
   }, [supabase]);
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    router.push("/login");
-  };
-
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-black">
-      <nav className="bg-white dark:bg-zinc-900 shadow p-4 flex justify-between items-center">
-        <h1 className="text-xl font-bold">Dashboard</h1>
-        <div className="flex gap-4 items-center">
-          <Link href="/profile" className="text-sm font-medium text-indigo-600 hover:text-indigo-500">Profile</Link>
-          <span className="text-sm text-gray-600 dark:text-gray-400">{user?.email}</span>
-          <button onClick={handleLogout} className="text-sm border px-3 py-1 rounded">Logout</button>
+    <AppShell>
+      <div className="space-y-8">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight" style={{ color: "var(--color-foreground)" }}>Dashboard</h1>
+            <p className="mt-1 text-sm" style={{ color: "var(--color-muted-foreground)" }}>Overview of your projects and tasks</p>
+          </div>
+          <Link href="/workspace/dashboard" className="btn-primary">
+            View Workspace
+          </Link>
         </div>
-      </nav>
-      <main className="p-8">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <div className="bg-white dark:bg-zinc-900 p-6 rounded-lg shadow">
-            <h2 className="text-gray-500 text-sm">Total Projects</h2>
-            <p className="text-3xl font-bold">{stats.projects}</p>
-          </div>
-          <div className="bg-white dark:bg-zinc-900 p-6 rounded-lg shadow">
-            <h2 className="text-gray-500 text-sm">Tasks Completed</h2>
-            <p className="text-3xl font-bold">{stats.completed}</p>
-          </div>
-          <div className="bg-white dark:bg-zinc-900 p-6 rounded-lg shadow">
-            <h2 className="text-gray-500 text-sm">Tasks In Progress</h2>
-            <p className="text-3xl font-bold">{stats.inProgress}</p>
-          </div>
-          <div className="bg-white dark:bg-zinc-900 p-6 rounded-lg shadow">
-            <h2 className="text-gray-500 text-sm">Upcoming Deadlines</h2>
-            <p className="text-3xl font-bold">{stats.upcoming}</p>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {statsCards.map((card) => {
+            const Icon = card.icon;
+            return (
+              <div key={card.key} className="surface rounded-xl p-5">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium" style={{ color: "var(--color-muted-foreground)" }}>{card.label}</p>
+                    <p className="text-3xl font-bold mt-2" style={{ color: "var(--color-foreground)" }}>
+                      {loading ? "..." : stats[card.key as keyof typeof stats]}
+                    </p>
+                  </div>
+                  <div className="h-10 w-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: "var(--color-accent)", color: "var(--color-primary)" }}>
+                    <Icon className="h-5 w-5" />
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="surface rounded-xl p-6">
+          <h2 className="text-lg font-semibold mb-4" style={{ color: "var(--color-foreground)" }}>Quick Actions</h2>
+          <div className="flex flex-wrap gap-3">
+            <Link href="/workspace/dashboard" className="btn-secondary">Create Workspace</Link>
+            <Link href="/workspace/dashboard" className="btn-secondary">New Project</Link>
+            <Link href="/profile" className="btn-secondary">Edit Profile</Link>
           </div>
         </div>
-      </main>
-    </div>
+      </div>
+    </AppShell>
   );
 }

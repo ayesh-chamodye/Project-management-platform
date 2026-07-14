@@ -3,6 +3,9 @@
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { getSupabaseClient } from "@/lib/supabase/client";
+import AppShell from "@/components/AppShell";
+import Link from "next/link";
+import { ArrowLeft, Send } from "lucide-react";
 
 export default function TaskPage() {
   const params = useParams();
@@ -10,6 +13,7 @@ export default function TaskPage() {
   const [task, setTask] = useState<any>(null);
   const [comments, setComments] = useState<any[]>([]);
   const [newComment, setNewComment] = useState("");
+  const [sending, setSending] = useState(false);
   const supabase = getSupabaseClient();
 
   useEffect(() => {
@@ -27,6 +31,8 @@ export default function TaskPage() {
 
   async function handleAddComment(e: React.FormEvent) {
     e.preventDefault();
+    if (!newComment.trim()) return;
+    setSending(true);
     await fetch("/api/comments", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -36,41 +42,62 @@ export default function TaskPage() {
     const res = await fetch(`/api/comments?taskId=${taskId}`);
     const data = await res.json();
     setComments(data.comments || []);
+    setSending(false);
   }
 
-  if (!task) return <div className="p-8">Loading...</div>;
+  if (!task) return <AppShell><div className="p-8">Loading...</div></AppShell>;
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-black">
-      <nav className="bg-white dark:bg-zinc-900 shadow p-4">
-        <h1 className="text-xl font-bold">Task Details</h1>
-      </nav>
-      <main className="max-w-3xl mx-auto px-6 py-12">
-        <div className="bg-white dark:bg-zinc-900 rounded-lg shadow p-8">
-          <h2 className="text-2xl font-bold mb-4">{task.title}</h2>
-          <p className="text-gray-600 dark:text-gray-400 mb-4">{task.description}</p>
-          <div className="flex gap-4 text-sm text-gray-500">
-            <span>Priority: {task.priority}</span>
-            <span>Status: {task.status}</span>
-            {task.due_date && <span>Due: {new Date(task.due_date).toLocaleDateString()}</span>}
+    <AppShell>
+      <div className="space-y-6">
+        <div className="flex items-center gap-3">
+          <Link href="/workspace/dashboard" className="btn-secondary">
+            <ArrowLeft className="h-4 w-4" />
+            Back
+          </Link>
+          <div>
+            <h1 className="text-2xl font-bold" style={{ color: "var(--color-foreground)" }}>{task.title}</h1>
+            <p className="text-sm mt-1" style={{ color: "var(--color-muted-foreground)" }}>{task.description || "No description provided."}</p>
           </div>
         </div>
-        <div className="mt-8 bg-white dark:bg-zinc-900 rounded-lg shadow p-8">
-          <h3 className="text-lg font-semibold mb-4">Comments</h3>
+
+        <div className="surface rounded-xl p-6">
+          <div className="flex flex-wrap gap-4 text-sm" style={{ color: "var(--color-muted-foreground)" }}>
+            <span className="px-2 py-1 rounded-md" style={{ backgroundColor: "var(--color-accent)" }}>Priority: {task.priority}</span>
+            <span className="px-2 py-1 rounded-md" style={{ backgroundColor: "var(--color-accent)" }}>Status: {task.status}</span>
+            {task.due_date && <span className="px-2 py-1 rounded-md" style={{ backgroundColor: "var(--color-accent)" }}>Due: {new Date(task.due_date).toLocaleDateString()}</span>}
+          </div>
+        </div>
+
+        <div className="surface rounded-xl p-6">
+          <h3 className="text-lg font-semibold mb-4" style={{ color: "var(--color-foreground)" }}>Comments</h3>
           <form onSubmit={handleAddComment} className="mb-6">
-            <textarea value={newComment} onChange={(e) => setNewComment(e.target.value)} className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white" rows={3} placeholder="Add a comment..." />
-            <button type="submit" className="mt-2 bg-indigo-600 text-white px-4 py-2 rounded">Add Comment</button>
+            <textarea
+              value={newComment}
+              onChange={(e) => setNewComment(e.target.value)}
+              placeholder="Write a comment..."
+              className="input-field mb-3"
+              rows={3}
+              required
+            />
+            <button type="submit" disabled={sending} className="btn-primary">
+              <Send className="h-4 w-4" />
+              {sending ? "Sending..." : "Add Comment"}
+            </button>
           </form>
           <div className="space-y-4">
             {comments.map((comment) => (
-              <div key={comment.id} className="border-b border-gray-200 dark:border-gray-700 pb-4">
-                <p className="text-sm text-gray-500">{comment.userName}</p>
-                <p className="text-gray-900 dark:text-white">{comment.message}</p>
+              <div key={comment.id} className="p-4 rounded-lg" style={{ border: "1px solid var(--color-border)" }}>
+                <p className="text-sm font-medium" style={{ color: "var(--color-foreground)" }}>{comment.userName || "User"}</p>
+                <p className="mt-1 text-sm" style={{ color: "var(--color-muted-foreground)" }}>{comment.message}</p>
               </div>
             ))}
+            {comments.length === 0 && (
+              <p className="text-sm text-center py-6" style={{ color: "var(--color-muted-foreground)" }}>No comments yet.</p>
+            )}
           </div>
         </div>
-      </main>
-    </div>
+      </div>
+    </AppShell>
   );
 }

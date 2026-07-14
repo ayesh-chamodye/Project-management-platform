@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import Link from "next/link";
-import { Mail, Lock, Loader2 } from "lucide-react";
+import { Mail, Lock, Loader2, ArrowLeft } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -72,23 +72,25 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-black px-4">
-      <div className="max-w-md w-full space-y-8">
+    <div className="min-h-screen flex items-center justify-center px-4" style={{ backgroundColor: "var(--color-background)" }}>
+      <div className="w-full max-w-md space-y-6">
         <div className="text-center">
-          <h2 className="text-3xl font-bold text-gray-900 dark:text-white">Sign in</h2>
-          <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">Manage your projects</p>
+          <Link href="/" className="inline-flex items-center gap-2 mb-6" style={{ color: "var(--color-muted-foreground)" }}>
+            <ArrowLeft className="h-4 w-4" />
+            Back to home
+          </Link>
+          <h2 className="text-3xl font-bold" style={{ color: "var(--color-foreground)" }}>Sign in</h2>
+          <p className="mt-2 text-sm" style={{ color: "var(--color-muted-foreground)" }}>Manage your projects</p>
         </div>
-        <div className="bg-white dark:bg-zinc-900 p-8 rounded-lg shadow space-y-6">
+
+        <div className="surface rounded-xl p-8 space-y-6">
           {error && (
-            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 px-4 py-3 rounded-lg text-sm">
+            <div className="px-4 py-3 rounded-lg text-sm" style={{ backgroundColor: "rgba(220, 38, 38, 0.1)", color: "var(--color-danger)", border: "1px solid rgba(220, 38, 38, 0.2)" }}>
               {error}
             </div>
           )}
-          <button
-            type="button"
-            onClick={handleGoogleSignIn}
-            className="w-full flex items-center justify-center gap-2 py-2.5 px-4 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
-          >
+
+          <button type="button" onClick={handleGoogleSignIn} className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg shadow-sm text-sm font-medium transition-colors" style={{ border: "1px solid var(--color-border)", color: "var(--color-foreground)", backgroundColor: "var(--color-card)" }}>
             <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
               <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.03 2.53-2.18 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
               <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
@@ -97,38 +99,38 @@ export default function LoginPage() {
             </svg>
             Sign in with Google
           </button>
+
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-300 dark:border-gray-600" />
+              <div className="w-full" style={{ borderTop: "1px solid var(--color-border)" }} />
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-white dark:bg-zinc-900 text-gray-500">Or continue with</span>
+              <span className="px-3 text-xs" style={{ backgroundColor: "var(--color-card)", color: "var(--color-muted-foreground)" }}>Or continue with</span>
             </div>
           </div>
+
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email address</label>
+              <label htmlFor="email" className="label">Email address</label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-                <input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="w-full pl-10 pr-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white" placeholder="you@example.com" />
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5" style={{ color: "var(--color-muted-foreground)" }} />
+                <input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="input-field pl-10" placeholder="you@example.com" />
               </div>
             </div>
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Password</label>
+              <label htmlFor="password" className="label">Password</label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-                <input id="password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} className="w-full pl-10 pr-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white" placeholder="••••••••" />
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5" style={{ color: "var(--color-muted-foreground)" }} />
+                <input id="password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} className="input-field pl-10" placeholder="••••••••" />
               </div>
             </div>
-            <button type="submit" disabled={loading} className="w-full flex items-center justify-center py-2.5 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 transition-colors">
+            <button type="submit" disabled={loading} className="btn-primary w-full">
               {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : "Sign in"}
             </button>
           </form>
-          <p className="text-center text-sm text-gray-600 dark:text-gray-400">
-            Don't have an account? <Link href="/register" className="font-medium text-indigo-600 hover:text-indigo-500">Sign up</Link>
-          </p>
-          <p className="text-center text-sm text-gray-600 dark:text-gray-400">
-            <Link href="/" className="font-medium text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white">← Back to home</Link>
+
+          <p className="text-center text-sm" style={{ color: "var(--color-muted-foreground)" }}>
+            Don't have an account? <Link href="/register" className="font-medium" style={{ color: "var(--color-primary)" }}>Sign up</Link>
           </p>
         </div>
       </div>

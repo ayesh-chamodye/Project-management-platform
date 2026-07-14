@@ -5,16 +5,21 @@ import { getSupabaseClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
-interface User {
-  id: string;
-  email?: string;
-  user_metadata?: { name?: string; avatar_url?: string };
-}
-
-export default function DashboardClient({ user }: { user: User }) {
+export default function DashboardClient() {
   const supabase = getSupabaseClient();
   const router = useRouter();
+  const [user, setUser] = useState<{ email?: string } | null>(null);
   const [stats, setStats] = useState({ projects: 0, completed: 0, inProgress: 0, upcoming: 0 });
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        setUser({ email: session.user.email || undefined });
+      }
+    };
+    fetchUser();
+  }, [supabase]);
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -45,7 +50,7 @@ export default function DashboardClient({ user }: { user: User }) {
         <h1 className="text-xl font-bold">Dashboard</h1>
         <div className="flex gap-4 items-center">
           <Link href="/profile" className="text-sm font-medium text-indigo-600 hover:text-indigo-500">Profile</Link>
-          <span className="text-sm text-gray-600 dark:text-gray-400">{user.email}</span>
+          <span className="text-sm text-gray-600 dark:text-gray-400">{user?.email}</span>
           <button onClick={handleLogout} className="text-sm border px-3 py-1 rounded">Logout</button>
         </div>
       </nav>

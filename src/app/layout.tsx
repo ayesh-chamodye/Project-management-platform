@@ -8,6 +8,7 @@ const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"]
 export const metadata: Metadata = {
   title: "ProjectFlow",
   description: "Minimal project management platform",
+  icons: { icon: "/vercel.svg" },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

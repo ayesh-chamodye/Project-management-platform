@@ -5,19 +5,30 @@ import { getSupabaseClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
-interface User {
-  id: string;
-  email?: string;
-  user_metadata?: { name?: string; avatar_url?: string };
-}
-
-export default function ProfileClient({ user }: { user: User }) {
+export default function ProfileClient() {
   const supabase = getSupabaseClient();
   const router = useRouter();
-  const [name, setName] = useState(user.user_metadata?.name || "");
-  const [avatarUrl, setAvatarUrl] = useState(user.user_metadata?.avatar_url || "");
+  const [user, setUser] = useState<{ email?: string; user_metadata?: { name?: string; avatar_url?: string } } | null>(null);
+  const [name, setName] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState("");
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        const u = session.user;
+        setUser({
+          email: u.email || undefined,
+          user_metadata: u.user_metadata as { name?: string; avatar_url?: string } | undefined,
+        });
+        setName((u.user_metadata as { name?: string } | undefined)?.name || "");
+        setAvatarUrl((u.user_metadata as { avatar_url?: string } | undefined)?.avatar_url || "");
+      }
+    };
+    fetchUser();
+  }, [supabase]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -57,7 +68,7 @@ export default function ProfileClient({ user }: { user: User }) {
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email</label>
-              <input type="email" value={user.email || ""} disabled className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-500 cursor-not-allowed" />
+              <input type="email" value={user?.email || ""} disabled className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-500 cursor-not-allowed" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Full Name</label>

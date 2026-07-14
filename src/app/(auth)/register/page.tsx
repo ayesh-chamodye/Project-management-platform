@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import Link from "next/link";
@@ -14,6 +14,14 @@ export default function RegisterPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const supabase = getSupabaseClient();
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        router.push("/dashboard");
+      }
+    });
+  }, [router, supabase]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -96,6 +104,9 @@ export default function RegisterPage() {
           </form>
           <p className="text-center text-sm text-gray-600 dark:text-gray-400">
             Already have an account? <Link href="/login" className="font-medium text-indigo-600 hover:text-indigo-500">Sign in</Link>
+          </p>
+          <p className="text-center text-sm text-gray-600 dark:text-gray-400">
+            <Link href="/" className="font-medium text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white">← Back to home</Link>
           </p>
         </div>
       </div>

@@ -28,8 +28,15 @@ export default function LoginPage() {
         }).then(() => {
           window.location.href = "/dashboard";
         });
+        return;
       }
     }
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        router.push("/dashboard");
+      }
+    });
   }, [router, supabase]);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -119,6 +126,9 @@ export default function LoginPage() {
           </form>
           <p className="text-center text-sm text-gray-600 dark:text-gray-400">
             Don't have an account? <Link href="/register" className="font-medium text-indigo-600 hover:text-indigo-500">Sign up</Link>
+          </p>
+          <p className="text-center text-sm text-gray-600 dark:text-gray-400">
+            <Link href="/" className="font-medium text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white">← Back to home</Link>
           </p>
         </div>
       </div>

@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, uuid, boolean, jsonb, index } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, uuid, boolean, jsonb, index, integer } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
 export const users = pgTable("users", {
@@ -60,6 +60,27 @@ export const comments = pgTable("comments", {
   createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
 });
 
+export const attachments = pgTable("attachments", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  taskId: uuid("task_id").notNull().references(() => tasks.id, { onDelete: "cascade" }),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  fileName: text("file_name").notNull(),
+  fileUrl: text("file_url").notNull(),
+  fileType: text("file_type"),
+  fileSize: integer("file_size"),
+  createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
+});
+
+export const activityLogs = pgTable("activity_logs", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  action: text("action").notNull(),
+  entityType: text("entity_type").notNull(),
+  entityId: uuid("entity_id").notNull(),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
+});
+
 export const notifications = pgTable("notifications", {
   id: uuid("id").primaryKey().defaultRandom(),
   userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
@@ -74,6 +95,8 @@ export const usersRelations = relations(users, ({ many }) => ({
   workspaceMembers: many(workspaceMembers),
   tasks: many(tasks),
   comments: many(comments),
+  attachments: many(attachments),
+  activityLogs: many(activityLogs),
   notifications: many(notifications),
 }));
 
@@ -99,11 +122,21 @@ export const taskRelations = relations(tasks, ({ one, many }) => ({
   assignee: one(users, { fields: [tasks.assigneeId], references: [users.id] }),
   createdBy: one(users, { fields: [tasks.createdById], references: [users.id] }),
   comments: many(comments),
+  attachments: many(attachments),
 }));
 
 export const commentRelations = relations(comments, ({ one }) => ({
   task: one(tasks, { fields: [comments.taskId], references: [tasks.id] }),
   user: one(users, { fields: [comments.userId], references: [users.id] }),
+}));
+
+export const attachmentRelations = relations(attachments, ({ one }) => ({
+  task: one(tasks, { fields: [attachments.taskId], references: [tasks.id] }),
+  user: one(users, { fields: [attachments.userId], references: [users.id] }),
+}));
+
+export const activityLogRelations = relations(activityLogs, ({ one }) => ({
+  user: one(users, { fields: [activityLogs.userId], references: [users.id] }),
 }));
 
 export const notificationRelations = relations(notifications, ({ one }) => ({

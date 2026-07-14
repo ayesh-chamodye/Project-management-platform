@@ -1,14 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { getSupabaseClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import AppShell from "@/components/AppShell";
 import { Plus, FolderOpen } from "lucide-react";
 
 export default function WorkspaceClient({ params }: { params: Promise<{ workspaceId: string }> }) {
-  const supabase = getSupabaseClient();
   const router = useRouter();
   const [workspaceId, setWorkspaceId] = useState<string | null>(null);
   const [projects, setProjects] = useState<any[]>([]);
@@ -23,12 +21,12 @@ export default function WorkspaceClient({ params }: { params: Promise<{ workspac
   useEffect(() => {
     if (!workspaceId) return;
     const fetchProjects = async () => {
-      const { data } = await supabase.from("projects").select("*").eq("workspace_id", workspaceId);
-      setProjects(data || []);
+      const { data } = await fetch(`/api/projects?workspaceId=${workspaceId}`).then((res) => res.json());
+      setProjects(data.projects || []);
       setLoading(false);
     };
     fetchProjects();
-  }, [supabase, workspaceId]);
+  }, [workspaceId]);
 
   const handleCreateProject = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,8 +39,8 @@ export default function WorkspaceClient({ params }: { params: Promise<{ workspac
     });
     setNewName("");
     setCreating(false);
-    const { data } = await supabase.from("projects").select("*").eq("workspace_id", workspaceId);
-    setProjects(data || []);
+    const { data } = await fetch(`/api/projects?workspaceId=${workspaceId}`).then((res) => res.json());
+    setProjects(data.projects || []);
   };
 
   return (

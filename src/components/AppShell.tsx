@@ -4,9 +4,11 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { useState, useEffect } from "react";
+import { Bell, Search } from "lucide-react";
 
 const nav = [
   { href: "/dashboard", label: "Dashboard" },
+  { href: "/workspace/dashboard", label: "Workspaces" },
   { href: "/profile", label: "Profile" },
   { href: "/settings", label: "Settings" },
 ];
@@ -15,11 +17,19 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const supabase = getSupabaseClient();
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
     const loadUser = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       setUserEmail(session?.user?.email || null);
+      if (session?.user) {
+        const res = await fetch("/api/notifications");
+        if (res.ok) {
+          const data = await res.json();
+          setUnreadCount((data.notifications || []).filter((n: any) => !n.isRead).length);
+        }
+      }
     };
     loadUser();
   }, [supabase]);
@@ -29,8 +39,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     window.location.href = "/login";
   };
 
-  const isActive = (href: string) =>
-    href === "/dashboard" ? pathname === href : pathname.startsWith(href);
+  const isActive = (href: string) => pathname === href || pathname.startsWith(href + "/");
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: "var(--color-background)" }}>
@@ -51,7 +60,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                   <Link
                     key={item.href}
                     href={item.href}
-                    className="px-3 py-2 rounded-lg text-sm font-medium transition-colors"
+                    className="px-3 py-2 rounded-lg text-sm font-medium transition-colors relative"
                     style={{
                       color: isActive(item.href) ? "var(--color-primary)" : "var(--color-muted-foreground)",
                       backgroundColor: isActive(item.href) ? "var(--color-accent)" : "transparent",
@@ -63,12 +72,19 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               </nav>
             </div>
             <div className="flex items-center gap-3">
+              <Link href="/search" className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800" style={{ color: "var(--color-muted-foreground)" }}>
+                <Search className="h-5 w-5" />
+              </Link>
+              <Link href="/notifications" className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 relative" style={{ color: "var(--color-muted-foreground)" }}>
+                <Bell className="h-5 w-5" />
+                {unreadCount > 0 && (
+                  <span className="absolute top-1 right-1 h-2 w-2 rounded-full" style={{ backgroundColor: "var(--color-danger)" }} />
+                )}
+              </Link>
               <span className="hidden sm:block text-sm" style={{ color: "var(--color-muted-foreground)" }}>
                 {userEmail || "Loading..."}
               </span>
-              <button onClick={handleLogout} className="btn-secondary text-sm">
-                Logout
-              </button>
+              <button onClick={handleLogout} className="btn-secondary text-sm">Logout</button>
             </div>
           </div>
         </div>

@@ -2,9 +2,24 @@ import { NextRequest, NextResponse } from "next/server";
 import pool from "@/lib/db";
 import { requireAuth } from "@/lib/auth";
 
-export async function GET() {
+function isUUID(str: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
+}
+
+export async function GET(request: NextRequest) {
   try {
-    const result = await pool.query(`SELECT w.id, w.name, w.owner_id as "ownerId", w.created_at as "createdAt", w.updated_at as "updatedAt", u.name as "ownerName", u.email as "ownerEmail" FROM workspaces w INNER JOIN users u ON w.owner_id = u.id ORDER BY w.created_at DESC`);
+    const user = await requireAuth();
+    const result = await pool.query(
+      `SELECT w.id, w.name, w.owner_id as "ownerId", w.created_at as "createdAt", w.updated_at as "updatedAt",
+              u.name as "ownerName", u.email as "ownerEmail",
+              wm.role as "memberRole"
+       FROM workspaces w
+       INNER JOIN users u ON w.owner_id = u.id
+       LEFT JOIN workspace_members wm ON wm.workspace_id = w.id AND wm.user_id = $1
+       WHERE w.owner_id = $1 OR wm.user_id = $1
+       ORDER BY w.created_at DESC`,
+      [user.id]
+    );
     return NextResponse.json({ workspaces: result.rows });
   } catch {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

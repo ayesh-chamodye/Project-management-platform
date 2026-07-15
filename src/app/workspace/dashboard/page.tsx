@@ -27,12 +27,18 @@ export default function WorkspaceDashboard() {
         return;
       }
 
-      const res = await fetch("/api/workspaces");
+      const res = await fetch("/api/workspaces", { cache: "no-store" });
+      console.log("[workspaces] fetch status", res.status);
       if (res.ok) {
         const data = await res.json();
         setWorkspaces(data.workspaces || []);
+      } else {
+        const text = await res.text();
+        console.error("[workspaces] bad response", res.status, text);
+        setError("Failed to load workspaces");
       }
     } catch (e) {
+      console.error("[workspaces] fetch error", e);
       setError("Failed to load workspaces");
     } finally {
       setLoading(false);
@@ -50,14 +56,16 @@ export default function WorkspaceDashboard() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: newName }),
       });
+      console.log("[workspace create] status", res.status);
       if (res.ok) {
         setNewName("");
-        fetchWorkspaces();
+        await fetchWorkspaces();
       } else {
-        const data = await res.json();
+        const data = await res.json().catch(() => ({ error: "Unknown error" }));
         setError(data.error || "Failed to create workspace");
       }
     } catch (e) {
+      console.error("[workspace create] error", e);
       setError("Failed to create workspace");
     } finally {
       setCreating(false);
@@ -76,7 +84,7 @@ export default function WorkspaceDashboard() {
 
         <div className="surface rounded-xl p-6">
           <h2 className="text-lg font-semibold mb-4" style={{ color: "var(--color-foreground)" }}>Create Workspace</h2>
-          {error && <div className="mb-4 text-sm" style={{ color: "var(--color-danger)" }}>{error}</div>}
+          {error && <div className="mb-4 text-sm rounded-lg px-3 py-2" style={{ color: "var(--color-danger)", backgroundColor: "rgba(220, 38, 38, 0.1)", border: "1px solid rgba(220, 38, 38, 0.2)" }}>{error}</div>}
           <form onSubmit={handleCreate} className="flex gap-3">
             <input
               type="text"

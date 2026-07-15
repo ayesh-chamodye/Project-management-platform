@@ -10,18 +10,25 @@ export async function GET(request: NextRequest) {
 
     let query = `SELECT p.*, u.name as createdByName FROM projects p
                  INNER JOIN users u ON p.created_by_id = u.id
-                 INNER JOIN workspace_members wm ON wm.workspace_id = p.workspace_id AND wm.user_id = $1`;
+                 LEFT JOIN workspace_members wm ON wm.workspace_id = p.workspace_id AND wm.user_id = $1
+                 LEFT JOIN workspaces w ON w.id = p.workspace_id`;
     const params: any[] = [user.id];
+    const conditions: string[] = [];
 
     if (workspaceId) {
-      query += " WHERE p.workspace_id = $2";
+      conditions.push(`p.workspace_id = $${params.length + 1}`);
       params.push(workspaceId);
     }
 
-    query += " ORDER BY p.created_at DESC";
+    conditions.push(`(w.owner_id = $${params.length + 1} OR wm.user_id = $${params.length} OR p.created_by_id = $${params.length})`);
+    params.push(user.id);
+
+    query += ` WHERE ${conditions.join(" AND ")} ORDER BY p.created_at DESC`;
     const result = await pool.query(query, params);
+    console.log("[api/projects] result count", result.rows.length, "params", params, "workspaceId", workspaceId);
     return NextResponse.json({ projects: result.rows });
-  } catch {
+  } catch (e) {
+    console.error("[api/projects] GET error", e);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

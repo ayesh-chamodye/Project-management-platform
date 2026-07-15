@@ -66,10 +66,10 @@ export default function DashboardClient() {
           supabase.from("tasks").select("*", { count: "exact", head: true }).eq("status", "done"),
           supabase.from("tasks").select("*", { count: "exact", head: true }).eq("status", "in_progress"),
           supabase.from("tasks").select("*").gte("due_date", new Date().toISOString()).lte("due_date", new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()),
-          fetch("/api/projects").then((res) => res.json()).catch(() => ({ projects: [] })),
-          fetch("/api/dashboard/tasks").then((res) => res.json()).catch(() => ({ tasks: [] })),
-          fetch("/api/activity-logs").then((res) => res.json()).catch(() => ({ logs: [] })),
-          fetch("/api/notifications").then((res) => res.json()).catch(() => ({ notifications: [] })),
+          fetch("/api/projects").then((res) => res.json().then((data) => ({ ok: res.ok, status: res.status, data }))).catch((e) => ({ ok: false, status: 0, data: null, error: String(e) })),
+          fetch("/api/dashboard/tasks").then((res) => res.json().then((data) => ({ ok: res.ok, status: res.status, data }))).catch((e) => ({ ok: false, status: 0, data: null, error: String(e) })),
+          fetch("/api/activity-logs").then((res) => res.json().then((data) => ({ ok: res.ok, status: res.status, data }))).catch((e) => ({ ok: false, status: 0, data: null, error: String(e) })),
+          fetch("/api/notifications").then((res) => res.json().then((data) => ({ ok: res.ok, status: res.status, data }))).catch((e) => ({ ok: false, status: 0, data: null, error: String(e) })),
         ]);
 
         setStats({
@@ -78,10 +78,21 @@ export default function DashboardClient() {
           inProgress: inProgressRes.count || 0,
           upcoming: upcomingRes.data?.length || 0,
         });
-        setRecentProjects((projectsListRes.projects || []).slice(0, 5));
-        setRecentTasks((tasksListRes.tasks || []).slice(0, 5));
-        setRecentActivity((activityRes.logs || []).slice(0, 5));
-        setNotifications((notificationsRes.notifications || []).slice(0, 5));
+
+        const apiErrors: string[] = [];
+        if (!projectsListRes.ok) apiErrors.push(`projects ${projectsListRes.status}`);
+        if (!tasksListRes.ok) apiErrors.push(`tasks ${tasksListRes.status}`);
+        if (!activityRes.ok) apiErrors.push(`activity ${activityRes.status}`);
+        if (!notificationsRes.ok) apiErrors.push(`notifications ${notificationsRes.status}`);
+        if (apiErrors.length) {
+          setError(`Dashboard data error: ${apiErrors.join(", ")}`);
+          console.error("[dashboard] api errors", apiErrors, { projectsListRes, tasksListRes, activityRes, notificationsRes });
+        }
+
+        setRecentProjects((projectsListRes.data?.projects || []).slice(0, 5));
+        setRecentTasks((tasksListRes.data?.tasks || []).slice(0, 5));
+        setRecentActivity((activityRes.data?.logs || []).slice(0, 5));
+        setNotifications((notificationsRes.data?.notifications || []).slice(0, 5));
       } catch (e) {
         setError("Failed to load dashboard data");
       } finally {

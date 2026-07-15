@@ -7,15 +7,10 @@ export async function createSupabaseClient() {
   console.log("[supabase] creating server client", {
     url: process.env.NEXT_PUBLIC_SUPABASE_URL,
     hasKey: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-    cookieCount: Array.isArray(cookieStore.getAll) ? undefined : "unknown",
   });
 
   try {
-    const allCookies = Array.isArray(cookieStore.getAll)
-      ? cookieStore.getAll()
-      : Array.isArray((cookieStore as any).cookies)
-        ? (cookieStore as any).cookies.getAll()
-        : [];
+    const allCookies = cookieStore.getAll();
 
     console.log("[supabase] cookies count", allCookies.length);
 
@@ -31,14 +26,8 @@ export async function createSupabaseClient() {
               return [];
             }
           },
-          setAll(cookiesToSet: Array<{ name: string; value: string }>) {
-            try {
-              cookiesToSet.forEach(({ name, value }) => {
-                cookieStore.set(name, value);
-              });
-            } catch {
-              // ignore
-            }
+          setAll() {
+            // no-op: Next.js 16 middleware/route cookies are read-only here
           },
         },
       }

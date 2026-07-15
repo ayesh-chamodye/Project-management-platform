@@ -45,13 +45,20 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (error) {
         setError(error.message || "Invalid email or password");
+      } else if (data.session) {
+        await fetch("/api/auth/set-session", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ access_token: data.session.access_token, refresh_token: data.session.refresh_token }),
+        });
+        router.push("/dashboard");
       } else {
         router.push("/dashboard");
       }

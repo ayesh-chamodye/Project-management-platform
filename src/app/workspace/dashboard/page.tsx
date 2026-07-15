@@ -13,40 +13,55 @@ export default function WorkspaceDashboard() {
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState("");
+  const [error, setError] = useState("");
 
   useEffect(() => {
     fetchWorkspaces();
   }, []);
 
   const fetchWorkspaces = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      router.push("/login");
-      return;
-    }
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        router.push("/login");
+        return;
+      }
 
-    const res = await fetch("/api/workspaces");
-    if (res.ok) {
-      const data = await res.json();
-      setWorkspaces(data.workspaces || []);
+      const res = await fetch("/api/workspaces");
+      if (res.ok) {
+        const data = await res.json();
+        setWorkspaces(data.workspaces || []);
+      }
+    } catch (e) {
+      setError("Failed to load workspaces");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newName.trim()) return;
     setCreating(true);
-    const res = await fetch("/api/workspaces", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: newName }),
-    });
-    if (res.ok) {
-      setNewName("");
-      fetchWorkspaces();
+    setError("");
+    try {
+      const res = await fetch("/api/workspaces", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: newName }),
+      });
+      if (res.ok) {
+        setNewName("");
+        fetchWorkspaces();
+      } else {
+        const data = await res.json();
+        setError(data.error || "Failed to create workspace");
+      }
+    } catch (e) {
+      setError("Failed to create workspace");
+    } finally {
+      setCreating(false);
     }
-    setCreating(false);
   };
 
   return (
@@ -61,6 +76,7 @@ export default function WorkspaceDashboard() {
 
         <div className="surface rounded-xl p-6">
           <h2 className="text-lg font-semibold mb-4" style={{ color: "var(--color-foreground)" }}>Create Workspace</h2>
+          {error && <div className="mb-4 text-sm" style={{ color: "var(--color-danger)" }}>{error}</div>}
           <form onSubmit={handleCreate} className="flex gap-3">
             <input
               type="text"

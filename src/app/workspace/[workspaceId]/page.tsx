@@ -13,6 +13,7 @@ export default function WorkspaceClient({ params }: { params: Promise<{ workspac
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState("");
+  const [error, setError] = useState("");
 
   useEffect(() => {
     params.then((resolved) => setWorkspaceId(resolved.workspaceId));
@@ -21,9 +22,17 @@ export default function WorkspaceClient({ params }: { params: Promise<{ workspac
   useEffect(() => {
     if (!workspaceId) return;
     const fetchProjects = async () => {
-      const { data } = await fetch(`/api/projects?workspaceId=${workspaceId}`).then((res) => res.json());
-      setProjects(data.projects || []);
-      setLoading(false);
+      try {
+        const res = await fetch(`/api/projects?workspaceId=${workspaceId}`);
+        if (res.ok) {
+          const data = await res.json();
+          setProjects(data.projects || []);
+        }
+      } catch (e) {
+        setError("Failed to load projects");
+      } finally {
+        setLoading(false);
+      }
     };
     fetchProjects();
   }, [workspaceId]);
@@ -32,15 +41,26 @@ export default function WorkspaceClient({ params }: { params: Promise<{ workspac
     e.preventDefault();
     if (!newName.trim() || !workspaceId) return;
     setCreating(true);
-    await fetch("/api/projects", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ workspaceId, name: newName, description: "", status: "active" }),
-    });
-    setNewName("");
-    setCreating(false);
-    const { data } = await fetch(`/api/projects?workspaceId=${workspaceId}`).then((res) => res.json());
-    setProjects(data.projects || []);
+    setError("");
+    try {
+      const res = await fetch("/api/projects", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ workspaceId, name: newName, description: "", status: "active" }),
+      });
+      if (res.ok) {
+        setNewName("");
+        const data = await res.json();
+        router.push(`/project/${data.project.id}`);
+      } else {
+        const data = await res.json();
+        setError(data.error || "Failed to create project");
+      }
+    } catch (e) {
+      setError("Failed to create project");
+    } finally {
+      setCreating(false);
+    }
   };
 
   return (
@@ -55,6 +75,7 @@ export default function WorkspaceClient({ params }: { params: Promise<{ workspac
 
         <div className="surface rounded-xl p-6">
           <h2 className="text-lg font-semibold mb-4" style={{ color: "var(--color-foreground)" }}>New Project</h2>
+          {error && <div className="mb-4 text-sm" style={{ color: "var(--color-danger)" }}>{error}</div>}
           <form onSubmit={handleCreateProject} className="flex gap-3">
             <input
               type="text"

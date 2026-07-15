@@ -23,6 +23,8 @@ const statsCards = [
   { label: "Upcoming Deadlines", key: "upcoming", icon: AlertTriangle },
 ];
 
+export const dynamic = 'force-dynamic';
+
 export default function DashboardClient() {
   const supabase = getSupabaseClient();
   const router = useRouter();
@@ -33,52 +35,58 @@ export default function DashboardClient() {
   const [notifications, setNotifications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<{ email?: string; name?: string } | null>(null);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     const loadDashboard = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) {
-        router.push("/login");
-        return;
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.user) {
+          router.push("/login");
+          return;
+        }
+
+        const u = session.user;
+        setUser({
+          email: u.email || undefined,
+          name: (u.user_metadata as any)?.name || u.email?.split("@")[0] || "User",
+        });
+
+        const [
+          projectsRes,
+          completedRes,
+          inProgressRes,
+          upcomingRes,
+          projectsListRes,
+          tasksListRes,
+          activityRes,
+          notificationsRes,
+        ] = await Promise.all([
+          supabase.from("projects").select("*", { count: "exact", head: true }),
+          supabase.from("tasks").select("*", { count: "exact", head: true }).eq("status", "done"),
+          supabase.from("tasks").select("*", { count: "exact", head: true }).eq("status", "in_progress"),
+          supabase.from("tasks").select("*").gte("due_date", new Date().toISOString()).lte("due_date", new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()),
+          fetch("/api/projects").then((res) => res.json()).catch(() => ({ projects: [] })),
+          fetch("/api/dashboard/tasks").then((res) => res.json()).catch(() => ({ tasks: [] })),
+          fetch("/api/activity-logs").then((res) => res.json()).catch(() => ({ logs: [] })),
+          fetch("/api/notifications").then((res) => res.json()).catch(() => ({ notifications: [] })),
+        ]);
+
+        setStats({
+          projects: projectsRes.count || 0,
+          completed: completedRes.count || 0,
+          inProgress: inProgressRes.count || 0,
+          upcoming: upcomingRes.data?.length || 0,
+        });
+        setRecentProjects((projectsListRes.projects || []).slice(0, 5));
+        setRecentTasks((tasksListRes.tasks || []).slice(0, 5));
+        setRecentActivity((activityRes.logs || []).slice(0, 5));
+        setNotifications((notificationsRes.notifications || []).slice(0, 5));
+      } catch (e) {
+        setError("Failed to load dashboard data");
+      } finally {
+        setLoading(false);
       }
-
-      const u = session.user;
-      setUser({
-        email: u.email || undefined,
-        name: (u.user_metadata as any)?.name || u.email?.split("@")[0] || "User",
-      });
-
-      const [
-        projectsRes,
-        completedRes,
-        inProgressRes,
-        upcomingRes,
-        projectsListRes,
-        tasksListRes,
-        activityRes,
-        notificationsRes,
-      ] = await Promise.all([
-        supabase.from("projects").select("*", { count: "exact", head: true }),
-        supabase.from("tasks").select("*", { count: "exact", head: true }).eq("status", "done"),
-        supabase.from("tasks").select("*", { count: "exact", head: true }).eq("status", "in_progress"),
-        supabase.from("tasks").select("*").gte("due_date", new Date().toISOString()).lte("due_date", new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()),
-        fetch("/api/projects").then((res) => res.json()).catch(() => ({ projects: [] })),
-        fetch("/api/dashboard/tasks").then((res) => res.json()).catch(() => ({ tasks: [] })),
-        fetch("/api/activity-logs").then((res) => res.json()).catch(() => ({ logs: [] })),
-        fetch("/api/notifications").then((res) => res.json()).catch(() => ({ notifications: [] })),
-      ]);
-
-      setStats({
-        projects: projectsRes.count || 0,
-        completed: completedRes.count || 0,
-        inProgress: inProgressRes.count || 0,
-        upcoming: upcomingRes.data?.length || 0,
-      });
-      setRecentProjects((projectsListRes.projects || []).slice(0, 5));
-      setRecentTasks((tasksListRes.tasks || []).slice(0, 5));
-      setRecentActivity((activityRes.logs || []).slice(0, 5));
-      setNotifications((notificationsRes.notifications || []).slice(0, 5));
-      setLoading(false);
     };
 
     loadDashboard();
@@ -102,6 +110,12 @@ export default function DashboardClient() {
             View Workspace
           </Link>
         </div>
+
+        {error && (
+          <div className="surface rounded-xl p-4 text-sm" style={{ color: "var(--color-danger)" }}>
+            {error}
+          </div>
+        )}
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {statsCards.map((card) => {

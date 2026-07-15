@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Task not found" }, { status: 404 });
     }
 
-    const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
+    const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
     const fileExt = file.name.split(".").pop();
     const filePath = `${taskId}/${Date.now()}-${file.name}`;
 

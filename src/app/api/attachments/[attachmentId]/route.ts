@@ -26,7 +26,7 @@ export async function DELETE(request: NextRequest) {
       }
     }
 
-    const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
+    const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
     const filePath = attachment.rows[0].file_url.split("/").slice(-2).join("/");
     await supabase.storage.from("attachments").remove([filePath]);
 

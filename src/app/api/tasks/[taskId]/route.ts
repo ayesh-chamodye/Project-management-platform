@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Task ID required" }, { status: 400 });
     }
 
-    const result = await pool.query("SELECT t.*, u.name as assigneeName FROM tasks t LEFT JOIN users u ON t.assignee_id = u.id WHERE t.id = $1", [taskId]);
+    const result = await pool.query("SELECT t.*, u.name as assigneeName, p.workspace_id FROM tasks t LEFT JOIN users u ON t.assignee_id = u.id LEFT JOIN projects p ON p.id = t.project_id WHERE t.id = $1", [taskId]);
     if (result.rows.length === 0) {
       return NextResponse.json({ error: "Task not found" }, { status: 404 });
     }

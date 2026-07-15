@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import AppShell from "@/components/AppShell";
 import Link from "next/link";
-import { ArrowLeft, Send, Paperclip, Activity } from "lucide-react";
+import { ArrowLeft, Send, Paperclip, Activity, Plus, GripVertical, Clock, GitBranch, Flag, Tag, X } from "lucide-react";
 
 export default function TaskPage() {
   const params = useParams();
@@ -14,9 +14,17 @@ export default function TaskPage() {
   const [comments, setComments] = useState<any[]>([]);
   const [attachments, setAttachments] = useState<any[]>([]);
   const [activities, setActivities] = useState<any[]>([]);
+  const [subtasks, setSubtasks] = useState<any[]>([]);
+  const [timeEntries, setTimeEntries] = useState<any[]>([]);
+  const [dependencies, setDependencies] = useState<any[]>([]);
+  const [labels, setLabels] = useState<any[]>([]);
+  const [taskLabels, setTaskLabels] = useState<any[]>([]);
+  const [availableLabels, setAvailableLabels] = useState<any[]>([]);
+  const [showAddLabel, setShowAddLabel] = useState(false);
   const [newComment, setNewComment] = useState("");
+  const [newSubtask, setNewSubtask] = useState("");
   const [sending, setSending] = useState(false);
-  const [activeTab, setActiveTab] = useState<"comments" | "attachments" | "activity">("comments");
+  const [activeTab, setActiveTab] = useState<"details" | "comments" | "attachments" | "activity" | "subtasks" | "time" | "dependencies">("details");
   const supabase = getSupabaseClient();
 
   useEffect(() => {
@@ -32,7 +40,27 @@ export default function TaskPage() {
     fetch(`/api/activity-logs?entityType=task&entityId=${taskId}`)
       .then((res) => res.json())
       .then((data) => setActivities(data.logs || []));
-  }, [taskId]);
+    fetch(`/api/subtasks?parentId=${taskId}`)
+      .then((res) => res.json())
+      .then((data) => setSubtasks(data.subtasks || []));
+    fetch(`/api/time-entries?taskId=${taskId}`)
+      .then((res) => res.json())
+      .then((data) => setTimeEntries(data.timeEntries || []));
+    fetch(`/api/task-dependencies?taskId=${taskId}`)
+      .then((res) => res.json())
+      .then((data) => setDependencies(data.dependencies || []));
+    fetch(`/api/labels?taskId=${taskId}`)
+      .then((res) => res.json())
+      .then((data) => {
+        setLabels(data.labels || []);
+        setTaskLabels(data.labels || []);
+      });
+    if (task) {
+      fetch(`/api/labels?workspaceId=${task.workspace_id}`)
+        .then((res) => res.json())
+        .then((data) => setAvailableLabels(data.labels || []));
+    }
+  }, [taskId, task]);
 
   async function handleAddComment(e: React.FormEvent) {
     e.preventDefault();
@@ -48,6 +76,41 @@ export default function TaskPage() {
     const data = await res.json();
     setComments(data.comments || []);
     setSending(false);
+  }
+
+  async function handleAddSubtask(e: React.FormEvent) {
+    e.preventDefault();
+    if (!newSubtask.trim()) return;
+    const res = await fetch("/api/subtasks", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ parentId: taskId, title: newSubtask }),
+    });
+    if (res.ok) {
+      setNewSubtask("");
+      const data = await res.json();
+      setSubtasks([...subtasks, data.subtask]);
+    }
+  }
+
+  async function handleAddLabel(labelId: string) {
+    const res = await fetch("/api/task-labels", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ taskId, labelId }),
+    });
+    if (res.ok) {
+      const label = availableLabels.find((l: any) => l.id === labelId);
+      if (label) {
+        setTaskLabels([...taskLabels, label]);
+      }
+      setShowAddLabel(false);
+    }
+  }
+
+  async function handleRemoveLabel(labelId: string) {
+    await fetch(`/api/task-labels?taskId=${taskId}&labelId=${labelId}`, { method: "DELETE" });
+    setTaskLabels(taskLabels.filter((l: any) => l.id !== labelId));
   }
 
   async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
@@ -67,9 +130,12 @@ export default function TaskPage() {
   }
 
   const tabs = [
+    { key: "details", label: "Details", icon: Activity },
     { key: "comments", label: "Comments", icon: Send },
     { key: "attachments", label: "Attachments", icon: Paperclip },
-    { key: "activity", label: "Activity", icon: Activity },
+    { key: "subtasks", label: "Subtasks", icon: Plus },
+    { key: "time", label: "Time", icon: Clock },
+    { key: "dependencies", label: "Dependencies", icon: GitBranch },
   ] as const;
 
   if (!task) return <AppShell><div className="p-8">Loading...</div></AppShell>;
@@ -88,12 +154,42 @@ export default function TaskPage() {
           </div>
         </div>
 
+        <div className="flex flex-wrap gap-2">
+          {taskLabels.map((label: any) => (
+            <span key={label.id} className="text-xs px-2 py-1 rounded-md inline-flex items-center gap-1" style={{ backgroundColor: "var(--color-accent)", color: "var(--color-foreground)" }}>
+              {label.name}
+              <button onClick={() => handleRemoveLabel(label.id)} className="hover:opacity-75">
+                <X className="h-3 w-3" />
+              </button>
+            </span>
+          ))}
+          <button onClick={() => setShowAddLabel(!showAddLabel)} className="text-xs px-2 py-1 rounded-md border border-dashed" style={{ borderColor: "var(--color-border)", color: "var(--color-muted-foreground)" }}>
+            <Plus className="h-3 w-3" />
+          </button>
+          {showAddLabel && (
+            <div className="relative">
+              <select
+                onChange={(e) => { if (e.target.value) handleAddLabel(e.target.value); }}
+                className="text-xs px-2 py-1 rounded-md"
+                style={{ backgroundColor: "var(--color-background)", color: "var(--color-foreground)", border: "1px solid var(--color-border)" }}
+                defaultValue=""
+              >
+                <option value="">Select label</option>
+                {availableLabels.filter((l: any) => !taskLabels.find((tl: any) => tl.id === l.id)).map((label: any) => (
+                  <option key={label.id} value={label.id}>{label.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
+        </div>
+
         <div className="surface rounded-xl p-6">
           <div className="flex flex-wrap gap-4 text-sm" style={{ color: "var(--color-muted-foreground)" }}>
             <span className="px-2 py-1 rounded-md" style={{ backgroundColor: "var(--color-accent)" }}>Priority: {task.priority}</span>
             <span className="px-2 py-1 rounded-md" style={{ backgroundColor: "var(--color-accent)" }}>Status: {task.status}</span>
             {task.due_date && <span className="px-2 py-1 rounded-md" style={{ backgroundColor: "var(--color-accent)" }}>Due: {new Date(task.due_date).toLocaleDateString()}</span>}
             {task.assigneeName && <span className="px-2 py-1 rounded-md" style={{ backgroundColor: "var(--color-accent)" }}>Assignee: {task.assigneeName}</span>}
+            {task.estimate && <span className="px-2 py-1 rounded-md" style={{ backgroundColor: "var(--color-accent)" }}>Estimate: {task.estimate}h</span>}
           </div>
         </div>
 
@@ -111,6 +207,29 @@ export default function TaskPage() {
               </button>
             ))}
           </div>
+
+          {activeTab === "details" && (
+            <div className="space-y-4">
+              <div>
+                <h3 className="font-semibold mb-2" style={{ color: "var(--color-foreground)" }}>Description</h3>
+                <p className="text-sm" style={{ color: "var(--color-muted-foreground)" }}>{task.description || "No description provided."}</p>
+              </div>
+              <div>
+                <h3 className="font-semibold mb-2" style={{ color: "var(--color-foreground)" }}>Labels</h3>
+                <div className="flex flex-wrap gap-2">
+                  {taskLabels.length === 0 ? (
+                    <p className="text-sm" style={{ color: "var(--color-muted-foreground)" }}>No labels</p>
+                  ) : (
+                    taskLabels.map((label: any) => (
+                      <span key={label.id} className="text-xs px-2 py-1 rounded-md" style={{ backgroundColor: "var(--color-accent)", color: "var(--color-foreground)" }}>
+                        {label.name}
+                      </span>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
 
           {activeTab === "comments" && (
             <div className="space-y-4">
@@ -162,18 +281,84 @@ export default function TaskPage() {
             </div>
           )}
 
-          {activeTab === "activity" && (
+          {activeTab === "subtasks" && (
             <div className="space-y-4">
-              {activities.map((log) => (
-                <div key={log.id} className="flex items-start gap-3 p-3 rounded-lg" style={{ border: "1px solid var(--color-border)" }}>
-                  <Activity className="h-4 w-4 mt-0.5" style={{ color: "var(--color-muted-foreground)" }} />
-                  <div>
-                    <p className="text-sm" style={{ color: "var(--color-foreground)" }}>{log.userName} {log.action} this task</p>
-                    <p className="text-xs mt-1" style={{ color: "var(--color-muted-foreground)" }}>{new Date(log.createdAt).toLocaleString()}</p>
+              <form onSubmit={handleAddSubtask} className="flex gap-3">
+                <input
+                  type="text"
+                  value={newSubtask}
+                  onChange={(e) => setNewSubtask(e.target.value)}
+                  placeholder="Add subtask..."
+                  className="input-field flex-1"
+                  required
+                />
+                <button type="submit" className="btn-primary">
+                  <Plus className="h-4 w-4" />
+                  Add
+                </button>
+              </form>
+              <div className="space-y-3">
+                {subtasks.map((subtask) => (
+                  <div key={subtask.id} className="flex items-center justify-between p-3 rounded-lg" style={{ border: "1px solid var(--color-border)" }}>
+                    <div>
+                      <p className="text-sm font-medium" style={{ color: "var(--color-foreground)" }}>{subtask.title}</p>
+                      <p className="text-xs" style={{ color: "var(--color-muted-foreground)" }}>Status: {subtask.status}</p>
+                    </div>
+                    <span className="text-xs px-2 py-1 rounded-md capitalize" style={{ backgroundColor: "var(--color-accent)", color: "var(--color-foreground)" }}>
+                      {subtask.status}
+                    </span>
                   </div>
+                ))}
+                {subtasks.length === 0 && <p className="text-sm text-center py-6" style={{ color: "var(--color-muted-foreground)" }}>No subtasks yet.</p>}
+              </div>
+            </div>
+          )}
+
+          {activeTab === "time" && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <p className="text-sm font-medium" style={{ color: "var(--color-muted-foreground)" }}>Total Time</p>
+                  <p className="text-2xl font-bold" style={{ color: "var(--color-foreground)" }}>{timeEntries.reduce((sum, entry) => sum + (parseFloat(entry.duration || "0")), 0)}h</p>
                 </div>
-              ))}
-              {activities.length === 0 && <p className="text-sm text-center py-6" style={{ color: "var(--color-muted-foreground)" }}>No activity yet.</p>}
+                <div>
+                  <p className="text-sm font-medium" style={{ color: "var(--color-muted-foreground)" }}>Estimate</p>
+                  <p className="text-2xl font-bold" style={{ color: "var(--color-foreground)" }}>{task.estimate || "0"}h</p>
+                </div>
+              </div>
+              <div className="space-y-3">
+                {timeEntries.map((entry) => (
+                  <div key={entry.id} className="flex items-center justify-between p-3 rounded-lg" style={{ border: "1px solid var(--color-border)" }}>
+                    <div>
+                      <p className="text-sm font-medium" style={{ color: "var(--color-foreground)" }}>{entry.description || "Time entry"}</p>
+                      <p className="text-xs" style={{ color: "var(--color-muted-foreground)" }}>{new Date(entry.startTime).toLocaleString()}</p>
+                    </div>
+                    <span className="text-xs px-2 py-1 rounded-md" style={{ backgroundColor: "var(--color-accent)", color: "var(--color-foreground)" }}>
+                      {entry.duration}h
+                    </span>
+                  </div>
+                ))}
+                {timeEntries.length === 0 && <p className="text-sm text-center py-6" style={{ color: "var(--color-muted-foreground)" }}>No time entries yet.</p>}
+              </div>
+            </div>
+          )}
+
+          {activeTab === "dependencies" && (
+            <div className="space-y-4">
+              <div className="space-y-3">
+                {dependencies.map((dep) => (
+                  <div key={dep.id} className="flex items-center justify-between p-3 rounded-lg" style={{ border: "1px solid var(--color-border)" }}>
+                    <div className="flex items-center gap-2">
+                      <GitBranch className="h-4 w-4" style={{ color: "var(--color-muted-foreground)" }} />
+                      <div>
+                        <p className="text-sm font-medium" style={{ color: "var(--color-foreground)" }}>{dep.dependsOnTitle}</p>
+                        <p className="text-xs" style={{ color: "var(--color-muted-foreground)" }}>{dep.type}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {dependencies.length === 0 && <p className="text-sm text-center py-6" style={{ color: "var(--color-muted-foreground)" }}>No dependencies yet.</p>}
+              </div>
             </div>
           )}
         </div>

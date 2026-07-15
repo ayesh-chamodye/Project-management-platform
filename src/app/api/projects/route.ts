@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import pool from "@/lib/db";
-import { requireAuth } from "@/lib/auth";
+import { requireAuthOrRespond } from "@/lib/auth";
 
 export async function GET(request: NextRequest) {
+  const { user, response } = await requireAuthOrRespond();
+  if (response) return response;
+
   try {
-    const user = await requireAuth();
     const { searchParams } = new URL(request.url);
     const workspaceId = searchParams.get("workspaceId");
 
@@ -34,8 +36,10 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const { user, response } = await requireAuthOrRespond();
+  if (response) return response;
+
   try {
-    const user = await requireAuth();
     const { workspaceId, name, description, status } = await request.json();
 
     if (!workspaceId || !name) {
@@ -50,7 +54,8 @@ export async function POST(request: NextRequest) {
 
     const result = await pool.query("INSERT INTO projects (workspace_id, name, description, status, created_by_id, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *", [workspaceId, name, description || null, status || "active", user.id, new Date(), new Date()]);
     return NextResponse.json({ project: result.rows[0] }, { status: 201 });
-  } catch {
+  } catch (e) {
+    console.error("[api/projects] POST error", e);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

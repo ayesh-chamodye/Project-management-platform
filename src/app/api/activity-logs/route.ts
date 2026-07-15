@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import pool from "@/lib/db";
-import { requireAuth } from "@/lib/auth";
+import { requireAuthOrRespond } from "@/lib/auth";
 
 export async function GET(request: NextRequest) {
+  const { user, response } = await requireAuthOrRespond();
+  if (response) return response;
+
   try {
-    const user = await requireAuth();
     const { searchParams } = new URL(request.url);
     const entityType = searchParams.get("entityType");
     const entityId = searchParams.get("entityId");
@@ -24,7 +26,8 @@ export async function GET(request: NextRequest) {
     query += ` WHERE ${conditions.join(" AND ")} ORDER BY al.created_at DESC LIMIT 50`;
     const result = await pool.query(query, params);
     return NextResponse.json({ logs: result.rows });
-  } catch {
+  } catch (e) {
+    console.error("[api/activity-logs] GET error", e);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

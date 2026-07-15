@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import pool from "@/lib/db";
-import { requireAuth } from "@/lib/auth";
+import { requireAuthOrRespond } from "@/lib/auth";
 
 export async function GET(request: NextRequest) {
+  const { user, response } = await requireAuthOrRespond();
+  if (response) return response;
+
   try {
-    const user = await requireAuth();
     const { searchParams } = new URL(request.url);
     const limit = parseInt(searchParams.get("limit") || "10");
 
@@ -20,7 +22,8 @@ export async function GET(request: NextRequest) {
     );
 
     return NextResponse.json({ tasks: result.rows });
-  } catch {
+  } catch (e) {
+    console.error("[api/dashboard/tasks] GET error", e);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

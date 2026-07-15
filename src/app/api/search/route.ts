@@ -16,7 +16,8 @@ export async function GET(request: NextRequest) {
     const taskResult = await pool.query(`SELECT t.*, p.name as projectName FROM tasks t INNER JOIN projects p ON t.project_id = p.id INNER JOIN workspace_members wm ON wm.workspace_id = p.workspace_id AND wm.user_id = $1 WHERE t.title ILIKE $2 OR t.description ILIKE $2 LIMIT 20`, [user.id, `%${query}%`]);
 
     return NextResponse.json({ tasks: taskResult.rows, projects: projectResult.rows });
-  } catch {
+  } catch (e) {
+    console.error("[api/search] GET error", e);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

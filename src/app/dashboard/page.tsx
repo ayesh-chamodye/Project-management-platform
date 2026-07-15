@@ -23,7 +23,7 @@ const statsCards = [
   { label: "Upcoming Deadlines", key: "upcoming", icon: AlertTriangle },
 ];
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export default function DashboardClient() {
   const supabase = getSupabaseClient();
@@ -41,6 +41,7 @@ export default function DashboardClient() {
     const loadDashboard = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
+        console.log("[dashboard] client session", session ? { hasUser: !!session.user, email: session.user?.email } : "null");
         if (!session?.user) {
           router.push("/login");
           return;
@@ -66,10 +67,10 @@ export default function DashboardClient() {
           supabase.from("tasks").select("*", { count: "exact", head: true }).eq("status", "done"),
           supabase.from("tasks").select("*", { count: "exact", head: true }).eq("status", "in_progress"),
           supabase.from("tasks").select("*").gte("due_date", new Date().toISOString()).lte("due_date", new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()),
-          fetch("/api/projects").then((res) => res.json().then((data) => ({ ok: res.ok, status: res.status, data }))).catch((e) => ({ ok: false, status: 0, data: null, error: String(e) })),
-          fetch("/api/dashboard/tasks").then((res) => res.json().then((data) => ({ ok: res.ok, status: res.status, data }))).catch((e) => ({ ok: false, status: 0, data: null, error: String(e) })),
-          fetch("/api/activity-logs").then((res) => res.json().then((data) => ({ ok: res.ok, status: res.status, data }))).catch((e) => ({ ok: false, status: 0, data: null, error: String(e) })),
-          fetch("/api/notifications").then((res) => res.json().then((data) => ({ ok: res.ok, status: res.status, data }))).catch((e) => ({ ok: false, status: 0, data: null, error: String(e) })),
+          fetch("/api/projects", { cache: "no-store" }).then((res) => res.json().then((data) => ({ ok: res.ok, status: res.status, data, text: "" }))).catch((e) => ({ ok: false, status: 0, data: null, text: String(e) })),
+          fetch("/api/dashboard/tasks", { cache: "no-store" }).then((res) => res.json().then((data) => ({ ok: res.ok, status: res.status, data, text: "" }))).catch((e) => ({ ok: false, status: 0, data: null, text: String(e) })),
+          fetch("/api/activity-logs", { cache: "no-store" }).then((res) => res.json().then((data) => ({ ok: res.ok, status: res.status, data, text: "" }))).catch((e) => ({ ok: false, status: 0, data: null, text: String(e) })),
+          fetch("/api/notifications", { cache: "no-store" }).then((res) => res.json().then((data) => ({ ok: res.ok, status: res.status, data, text: "" }))).catch((e) => ({ ok: false, status: 0, data: null, text: String(e) })),
         ]);
 
         setStats({
@@ -79,14 +80,19 @@ export default function DashboardClient() {
           upcoming: upcomingRes.data?.length || 0,
         });
 
-        const apiErrors: string[] = [];
-        if (!projectsListRes.ok) apiErrors.push(`projects ${projectsListRes.status}`);
-        if (!tasksListRes.ok) apiErrors.push(`tasks ${tasksListRes.status}`);
-        if (!activityRes.ok) apiErrors.push(`activity ${activityRes.status}`);
-        if (!notificationsRes.ok) apiErrors.push(`notifications ${notificationsRes.status}`);
+        const apiErrors: { key: string; status: number; text: string }[] = [];
+        if (!projectsListRes.ok) apiErrors.push({ key: "projects", status: projectsListRes.status, text: (projectsListRes.data as any)?.error || "" });
+        if (!tasksListRes.ok) apiErrors.push({ key: "tasks", status: tasksListRes.status, text: (tasksListRes.data as any)?.error || "" });
+        if (!activityRes.ok) apiErrors.push({ key: "activity", status: activityRes.status, text: (activityRes.data as any)?.error || "" });
+        if (!notificationsRes.ok) apiErrors.push({ key: "notifications", status: notificationsRes.status, text: (notificationsRes.data as any)?.error || "" });
+
         if (apiErrors.length) {
-          setError(`Dashboard data error: ${apiErrors.join(", ")}`);
-          console.error("[dashboard] api errors", apiErrors, { projectsListRes, tasksListRes, activityRes, notificationsRes });
+          const firstText = apiErrors[0].text;
+          const reason = firstText || apiErrors.map((a) => `${a.key} ${a.status}`).join(", ");
+          setError(`Dashboard data error: ${reason}`);
+          console.error("[dashboard] api errors", apiErrors);
+        } else {
+          setError("");
         }
 
         setRecentProjects((projectsListRes.data?.projects || []).slice(0, 5));
@@ -94,7 +100,9 @@ export default function DashboardClient() {
         setRecentActivity((activityRes.data?.logs || []).slice(0, 5));
         setNotifications((notificationsRes.data?.notifications || []).slice(0, 5));
       } catch (e) {
-        setError("Failed to load dashboard data");
+        const msg = e instanceof Error ? e.message : String(e);
+        console.error("[dashboard] load error", e);
+        setError(`Dashboard failed: ${msg}`);
       } finally {
         setLoading(false);
       }

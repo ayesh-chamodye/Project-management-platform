@@ -58,19 +58,11 @@ export default function DashboardClient() {
           completedRes,
           inProgressRes,
           upcomingRes,
-          projectsListRes,
-          tasksListRes,
-          activityRes,
-          notificationsRes,
         ] = await Promise.all([
           supabase.from("projects").select("*", { count: "exact", head: true }),
           supabase.from("tasks").select("*", { count: "exact", head: true }).eq("status", "done"),
           supabase.from("tasks").select("*", { count: "exact", head: true }).eq("status", "in_progress"),
           supabase.from("tasks").select("*").gte("due_date", new Date().toISOString()).lte("due_date", new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()),
-          fetch("/api/projects", { cache: "no-store" }).then((res) => res.json().then((data) => ({ ok: res.ok, status: res.status, data, text: "" }))).catch((e) => ({ ok: false, status: 0, data: null, text: String(e) })),
-          fetch("/api/dashboard/tasks", { cache: "no-store" }).then((res) => res.json().then((data) => ({ ok: res.ok, status: res.status, data, text: "" }))).catch((e) => ({ ok: false, status: 0, data: null, text: String(e) })),
-          fetch("/api/activity-logs", { cache: "no-store" }).then((res) => res.json().then((data) => ({ ok: res.ok, status: res.status, data, text: "" }))).catch((e) => ({ ok: false, status: 0, data: null, text: String(e) })),
-          fetch("/api/notifications", { cache: "no-store" }).then((res) => res.json().then((data) => ({ ok: res.ok, status: res.status, data, text: "" }))).catch((e) => ({ ok: false, status: 0, data: null, text: String(e) })),
         ]);
 
         setStats({
@@ -80,25 +72,41 @@ export default function DashboardClient() {
           upcoming: upcomingRes.data?.length || 0,
         });
 
-        const apiErrors: { key: string; status: number; text: string }[] = [];
-        if (!projectsListRes.ok) apiErrors.push({ key: "projects", status: projectsListRes.status, text: (projectsListRes.data as any)?.error || "" });
-        if (!tasksListRes.ok) apiErrors.push({ key: "tasks", status: tasksListRes.status, text: (tasksListRes.data as any)?.error || "" });
-        if (!activityRes.ok) apiErrors.push({ key: "activity", status: activityRes.status, text: (activityRes.data as any)?.error || "" });
-        if (!notificationsRes.ok) apiErrors.push({ key: "notifications", status: notificationsRes.status, text: (notificationsRes.data as any)?.error || "" });
+        const apiErrors: string[] = [];
+        const fetchWithErrorHandling = async (url: string, key: string) => {
+          try {
+            const res = await fetch(url, { cache: "no-store" });
+            const data = await res.json().catch(() => null);
+            if (!res.ok) {
+              apiErrors.push(`${key}: ${res.status} ${data?.error || ""}`);
+              return null;
+            }
+            return data;
+          } catch (e) {
+            apiErrors.push(`${key}: ${String(e)}`);
+            return null;
+          }
+        };
+
+        const [projectsListRes, tasksListRes, activityRes, notificationsRes] = await Promise.all([
+          fetchWithErrorHandling("/api/projects", "projects"),
+          fetchWithErrorHandling("/api/dashboard/tasks", "tasks"),
+          fetchWithErrorHandling("/api/activity-logs", "activity"),
+          fetchWithErrorHandling("/api/notifications", "notifications"),
+        ]);
 
         if (apiErrors.length) {
-          const firstText = apiErrors[0].text;
-          const reason = firstText || apiErrors.map((a) => `${a.key} ${a.status}`).join(", ");
+          const reason = apiErrors.join(", ");
           setError(`Dashboard data error: ${reason}`);
           console.error("[dashboard] api errors", apiErrors);
         } else {
           setError("");
         }
 
-        setRecentProjects((projectsListRes.data?.projects || []).slice(0, 5));
-        setRecentTasks((tasksListRes.data?.tasks || []).slice(0, 5));
-        setRecentActivity((activityRes.data?.logs || []).slice(0, 5));
-        setNotifications((notificationsRes.data?.notifications || []).slice(0, 5));
+        setRecentProjects((projectsListRes?.projects || []).slice(0, 5));
+        setRecentTasks((tasksListRes?.tasks || []).slice(0, 5));
+        setRecentActivity((activityRes?.logs || []).slice(0, 5));
+        setNotifications((notificationsRes?.notifications || []).slice(0, 5));
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
         console.error("[dashboard] load error", e);

@@ -29,9 +29,9 @@ export async function GET(request: NextRequest) {
     const result = await pool.query(query, params);
     console.log("[api/projects] result count", result.rows.length, "params", params, "workspaceId", workspaceId);
     return NextResponse.json({ projects: result.rows });
-  } catch (e) {
+  } catch (e: any) {
     console.error("[api/projects] GET error", e);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json({ error: e?.message || "Internal server error", detail: "projects-fetch-failed" }, { status: 500 });
   }
 }
 

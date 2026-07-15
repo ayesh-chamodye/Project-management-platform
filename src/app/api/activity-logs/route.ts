@@ -26,8 +26,8 @@ export async function GET(request: NextRequest) {
     query += ` WHERE ${conditions.join(" AND ")} ORDER BY al.created_at DESC LIMIT 50`;
     const result = await pool.query(query, params);
     return NextResponse.json({ logs: result.rows });
-  } catch (e) {
+  } catch (e: any) {
     console.error("[api/activity-logs] GET error", e);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json({ error: e?.message || "Internal server error", detail: "activity-logs-fetch-failed" }, { status: 500 });
   }
 }

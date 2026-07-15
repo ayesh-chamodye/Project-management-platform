@@ -18,6 +18,10 @@ function getPool(): Pool {
       connectionString,
       ssl: { rejectUnauthorized: false },
     } as any);
+
+    poolInstance.on("error", (err) => {
+      console.error("[db] pool error", err);
+    });
   }
 
   return poolInstance;

@@ -22,8 +22,8 @@ export async function GET(request: NextRequest) {
     );
 
     return NextResponse.json({ tasks: result.rows });
-  } catch (e) {
+  } catch (e: any) {
     console.error("[api/dashboard/tasks] GET error", e);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json({ error: e?.message || "Internal server error", detail: "dashboard-tasks-fetch-failed" }, { status: 500 });
   }
 }

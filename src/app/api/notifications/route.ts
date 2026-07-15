@@ -9,9 +9,10 @@ export async function GET() {
   try {
     const result = await pool.query("SELECT * FROM notifications WHERE user_id = $1 ORDER BY created_at DESC", [user.id]);
     return NextResponse.json({ notifications: result.rows });
-  } catch (e) {
+  } catch (e: any) {
     console.error("[api/notifications] GET error", e);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    const message = e?.message || "Internal server error";
+    return NextResponse.json({ error: message, detail: "notifications-fetch-failed" }, { status: 500 });
   }
 }
 

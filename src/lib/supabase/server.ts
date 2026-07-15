@@ -21,13 +21,19 @@ export async function createSupabaseClient() {
         cookies: {
           getAll() {
             try {
-              return allCookies;
+              return cookieStore.getAll();
             } catch {
               return [];
             }
           },
-          setAll() {
-            // no-op: Next.js 16 middleware/route cookies are read-only here
+          setAll(cookiesToSet: Array<{ name: string; value: string }>) {
+            try {
+              cookiesToSet.forEach(({ name, value }) => {
+                cookieStore.set(name, value);
+              });
+            } catch {
+              // ignore in middleware/read-only contexts
+            }
           },
         },
       }

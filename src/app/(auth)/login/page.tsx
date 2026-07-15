@@ -34,7 +34,7 @@ export default function LoginPage() {
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
-        router.push("/dashboard");
+        window.location.href = "/dashboard";
       }
     });
   }, [router, supabase]);
@@ -58,9 +58,9 @@ export default function LoginPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ access_token: data.session.access_token, refresh_token: data.session.refresh_token }),
         });
-        router.push("/dashboard");
+        window.location.href = "/dashboard";
       } else {
-        router.push("/dashboard");
+        window.location.href = "/dashboard";
       }
     } catch {
       setError("An error occurred. Please try again.");

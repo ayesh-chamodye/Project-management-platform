@@ -18,7 +18,7 @@ export default function RegisterPage() {
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
-        router.push("/dashboard");
+        window.location.href = "/dashboard";
       }
     });
   }, [router, supabase]);
@@ -38,7 +38,7 @@ export default function RegisterPage() {
       if (error) {
         setError(error.message || "Registration failed");
       } else {
-        router.push("/dashboard");
+        window.location.href = "/dashboard";
       }
     } catch {
       setError("An error occurred. Please try again.");

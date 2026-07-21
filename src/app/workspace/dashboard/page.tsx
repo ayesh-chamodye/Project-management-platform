@@ -21,15 +21,22 @@ export default function WorkspaceDashboard() {
   const fetchWorkspaces = async () => {
     try {
       let user = null;
+      let authError = "";
       try {
         const res = await fetch("/api/auth/check", { cache: "no-store" });
         if (res.ok) {
           const data = await res.json();
           user = data.user;
+        } else {
+          const text = await res.text().catch(() => "Unknown error");
+          authError = text || "Auth check failed";
         }
-      } catch {}
+      } catch (e: any) {
+        authError = e?.message || "Auth check failed";
+      }
       if (!user) {
-        router.push("/login");
+        setError(authError || "You must be logged in to view workspaces.");
+        setLoading(false);
         return;
       }
       setUser({ email: user.email });

@@ -4,7 +4,7 @@ import { requireAuth } from "@/lib/auth";
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await requireAuth();
+    const user = await requireAuth(request);
     const url = new URL(request.url);
     const workspaceId = url.pathname.split("/")[3];
 
@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await requireAuth();
+    const user = await requireAuth(request);
     const url = new URL(request.url);
     const workspaceId = url.pathname.split("/")[3];
     const { email, role } = await request.json();
@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const user = await requireAuth();
+    const user = await requireAuth(request);
     const url = new URL(request.url);
     const workspaceId = url.pathname.split("/")[3];
     const memberId = url.pathname.split("/")[4];

@@ -4,7 +4,7 @@ import { requireAuth } from "@/lib/auth";
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await requireAuth();
+    const user = await requireAuth(request);
     const { searchParams } = new URL(request.url);
     const query = searchParams.get("q");
 

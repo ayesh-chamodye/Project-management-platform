@@ -3,7 +3,7 @@ import pool from "@/lib/db";
 import { requireAuthOrRespond } from "@/lib/auth";
 
 export async function GET(request: NextRequest) {
-  const { user, response } = await requireAuthOrRespond();
+  const { user, response } = await requireAuthOrRespond(request);
   if (response) return response;
 
   try {

@@ -1,40 +1,66 @@
-import { createSupabaseClient } from "@/lib/supabase/server";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
-export async function getSession() {
+function parseJwt(token: string) {
   try {
-    const supabase = await createSupabaseClient();
-    const { data, error } = await supabase.auth.getSession();
-    if (error) {
-      console.error("[auth] getSession error", error);
-    }
-    return data.session ?? null;
-  } catch (e) {
-    console.error("[auth] getSession unexpected error", e);
+    const base64Url = token.split(".")[1];
+    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split("")
+        .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+        .join("")
+    );
+    return JSON.parse(jsonPayload);
+  } catch {
     return null;
   }
 }
 
-export async function getUser() {
-  const session = await getSession();
-  return session?.user ?? null;
+export function getUserIdFromRequest(request: NextRequest) {
+  const cookieHeader = request.headers.get("cookie") || "";
+  const cookies = Object.fromEntries(
+    cookieHeader.split(";").map((c) => {
+      const [name, ...rest] = c.trim().split("=");
+      return [name, rest.join("=")];
+    })
+  );
+  const accessToken = cookies["sb-access-token"];
+  if (!accessToken) return null;
+
+  const payload = parseJwt(accessToken);
+  if (!payload || !payload.exp || Date.now() > payload.exp * 1000) return null;
+
+  return payload.sub;
 }
 
-export async function requireAuth() {
-  const user = await getUser();
-  if (!user) {
+export function requireAuth(request: NextRequest) {
+  const userId = getUserIdFromRequest(request);
+  if (!userId) {
     throw new Error("Unauthorized");
   }
-  return user;
+
+  const cookieHeader = request.headers.get("cookie") || "";
+  const cookies = Object.fromEntries(
+    cookieHeader.split(";").map((c) => {
+      const [name, ...rest] = c.trim().split("=");
+      return [name, rest.join("=")];
+    })
+  );
+  const accessToken = cookies["sb-access-token"];
+  const payload = accessToken ? parseJwt(accessToken) : null;
+  const email = payload?.email || "";
+  const name = payload?.user_metadata?.name || email?.split("@")[0] || "";
+
+  return { id: userId, email, name };
 }
 
 export function unauthorizedResponse(message = "Unauthorized") {
   return NextResponse.json({ error: message }, { status: 401 });
 }
 
-export async function requireAuthOrRespond() {
+export async function requireAuthOrRespond(request: NextRequest) {
   try {
-    return { user: await requireAuth(), response: null as ReturnType<typeof unauthorizedResponse> | null };
+    return { user: requireAuth(request), response: null as ReturnType<typeof unauthorizedResponse> | null };
   } catch {
     return { user: null as any, response: unauthorizedResponse() };
   }

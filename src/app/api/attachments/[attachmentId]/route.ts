@@ -5,7 +5,7 @@ import { createClient } from "@supabase/supabase-js";
 
 export async function DELETE(request: NextRequest) {
   try {
-    const user = await requireAuth();
+    const user = await requireAuth(request);
     const url = new URL(request.url);
     const attachmentId = url.pathname.split("/").pop();
 

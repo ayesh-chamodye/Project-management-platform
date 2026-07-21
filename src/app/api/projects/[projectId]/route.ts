@@ -4,7 +4,7 @@ import { requireAuth } from "@/lib/auth";
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await requireAuth();
+    const user = await requireAuth(request);
     const url = new URL(request.url);
     const projectId = url.pathname.split("/")[3];
 
@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   try {
-    const user = await requireAuth();
+    const user = await requireAuth(request);
     const url = new URL(request.url);
     const projectId = url.pathname.split("/")[3];
 
@@ -82,7 +82,7 @@ export async function PATCH(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const user = await requireAuth();
+    const user = await requireAuth(request);
     const url = new URL(request.url);
     const projectId = url.pathname.split("/")[3];
 

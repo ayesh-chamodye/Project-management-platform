@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await requireAuth();
+    const user = await requireAuth(request);
     const { projectId, title, description, priority, status, dueDate, assigneeId } = await request.json();
 
     if (!projectId || !title) {

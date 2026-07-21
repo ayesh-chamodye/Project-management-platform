@@ -5,7 +5,7 @@ import { createClient } from "@supabase/supabase-js";
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await requireAuth();
+    const user = await requireAuth(request);
     const formData = await request.formData();
     const taskId = formData.get("taskId") as string;
     const file = formData.get("file") as File | null;

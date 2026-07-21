@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import pool from "@/lib/db";
 import { requireAuthOrRespond } from "@/lib/auth";
 
-export async function GET() {
-  const { user, response } = await requireAuthOrRespond();
+export async function GET(request: NextRequest) {
+  const { user, response } = await requireAuthOrRespond(request);
   if (response) return response;
 
   try {
@@ -17,7 +17,7 @@ export async function GET() {
 }
 
 export async function PATCH(request: NextRequest) {
-  const { user, response } = await requireAuthOrRespond();
+  const { user, response } = await requireAuthOrRespond(request);
   if (response) return response;
 
   try {

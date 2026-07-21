@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   try {
-    const user = await requireAuth();
+    const user = await requireAuth(request);
     const url = new URL(request.url);
     const taskId = url.pathname.split("/").pop();
     const body = await request.json();
@@ -64,7 +64,7 @@ export async function PATCH(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const user = await requireAuth();
+    const user = await requireAuth(request);
     const url = new URL(request.url);
     const taskId = url.pathname.split("/").pop();
 

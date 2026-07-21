@@ -16,12 +16,20 @@ export default function RegisterPage() {
   const supabase = getSupabaseClient();
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        window.location.href = "/dashboard";
+    (async () => {
+      let user = null;
+      try {
+        const res = await fetch("/api/auth/check", { cache: "no-store" });
+        if (res.ok) {
+          const data = await res.json();
+          user = data.user;
+        }
+      } catch {}
+      if (user) {
+        router.push("/dashboard");
       }
-    });
-  }, [router, supabase]);
+    })();
+  }, [router]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

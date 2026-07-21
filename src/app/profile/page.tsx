@@ -19,19 +19,28 @@ export default function ProfileClient() {
 
   useEffect(() => {
     const fetchUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        const u = session.user;
-        setUser({
-          email: u.email || undefined,
-          user_metadata: u.user_metadata as { name?: string; avatar_url?: string } | undefined,
-        });
-        setName((u.user_metadata as { name?: string } | undefined)?.name || "");
-        setAvatarUrl((u.user_metadata as { avatar_url?: string } | undefined)?.avatar_url || "");
+      let user = null;
+      try {
+        const res = await fetch("/api/auth/check", { cache: "no-store" });
+        if (res.ok) {
+          const data = await res.json();
+          user = data.user;
+        }
+      } catch {}
+      if (!user) {
+        router.push("/login");
+        return;
       }
+      const u = user;
+      setUser({
+        email: u.email || undefined,
+        user_metadata: u.user_metadata as { name?: string; avatar_url?: string } | undefined,
+      });
+      setName((u.user_metadata as { name?: string } | undefined)?.name || "");
+      setAvatarUrl((u.user_metadata as { avatar_url?: string } | undefined)?.avatar_url || "");
     };
     fetchUser();
-  }, [supabase]);
+  }, [router]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

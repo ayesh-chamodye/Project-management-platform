@@ -1,15 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { getSupabaseClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import AppShell from "@/components/AppShell";
 import { Plus, FolderOpen, FolderKanban } from "lucide-react";
 
 export default function WorkspaceDashboard() {
-  const supabase = getSupabaseClient();
   const router = useRouter();
   const [workspaces, setWorkspaces] = useState<any[]>([]);
+  const [user, setUser] = useState<{ email?: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState("");
@@ -21,11 +20,19 @@ export default function WorkspaceDashboard() {
 
   const fetchWorkspaces = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
+      let user = null;
+      try {
+        const res = await fetch("/api/auth/check", { cache: "no-store" });
+        if (res.ok) {
+          const data = await res.json();
+          user = data.user;
+        }
+      } catch {}
+      if (!user) {
         router.push("/login");
         return;
       }
+      setUser({ email: user.email });
 
       const res = await fetch("/api/workspaces", { cache: "no-store" });
       console.log("[workspaces] fetch status", res.status);

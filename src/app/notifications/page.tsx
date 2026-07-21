@@ -1,15 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { getSupabaseClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import AppShell from "@/components/AppShell";
 import { Bell, Check } from "lucide-react";
 
 export default function NotificationsPage() {
-  const supabase = getSupabaseClient();
   const router = useRouter();
   const [notifications, setNotifications] = useState<any[]>([]);
+  const [user, setUser] = useState<{ email?: string } | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -17,11 +16,19 @@ export default function NotificationsPage() {
   }, []);
 
   const fetchNotifications = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
+    let user = null;
+    try {
+      const res = await fetch("/api/auth/check", { cache: "no-store" });
+      if (res.ok) {
+        const data = await res.json();
+        user = data.user;
+      }
+    } catch {}
+    if (!user) {
       router.push("/login");
       return;
     }
+    setUser({ email: user.email });
     const res = await fetch("/api/notifications");
     if (res.ok) {
       const data = await res.json();

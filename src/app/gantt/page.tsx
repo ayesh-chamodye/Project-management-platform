@@ -1,20 +1,30 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { getSupabaseClient } from "@/lib/supabase/client";
+import { useRouter } from "next/navigation";
 import AppShell from "@/components/AppShell";
 import { Calendar, ChevronRight } from "lucide-react";
 
 export default function GanttPage() {
-  const supabase = getSupabaseClient();
+  const router = useRouter();
   const [projects, setProjects] = useState<any[]>([]);
   const [tasks, setTasks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const loadData = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
+      let user = null;
+      try {
+        const res = await fetch("/api/auth/check", { cache: "no-store" });
+        if (res.ok) {
+          const data = await res.json();
+          user = data.user;
+        }
+      } catch {}
+      if (!user) {
+        router.push("/login");
+        return;
+      }
 
       const [projectsRes, tasksRes] = await Promise.all([
         fetch("/api/projects"),
@@ -32,7 +42,7 @@ export default function GanttPage() {
       setLoading(false);
     };
     loadData();
-  }, [supabase]);
+  }, [router]);
 
   const tasksByProject = projects.map((project) => ({
     ...project,

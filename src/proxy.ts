@@ -1,11 +1,44 @@
 import { NextResponse } from "next/server";
-import { createSupabaseClient } from "@/lib/supabase/server";
+
+function parseJwt(token: string) {
+  try {
+    const base64Url = token.split(".")[1];
+    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split("")
+        .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+        .join("")
+    );
+    return JSON.parse(jsonPayload);
+  } catch {
+    return null;
+  }
+}
+
+function getSessionFromRequest(request: Request) {
+  const cookieHeader = request.headers.get("cookie") || "";
+  const cookies = Object.fromEntries(
+    cookieHeader.split(";").map((c) => {
+      const [name, ...rest] = c.trim().split("=");
+      return [name, rest.join("=")];
+    })
+  );
+  const accessToken = cookies["sb-access-token"];
+  let isAuthenticated = false;
+
+  if (accessToken) {
+    const payload = parseJwt(accessToken);
+    if (payload && payload.exp) {
+      isAuthenticated = Date.now() < payload.exp * 1000;
+    }
+  }
+
+  return { isAuthenticated };
+}
 
 export async function proxy(request: Request) {
-  const supabase = await createSupabaseClient();
-  const { data: { session } } = await supabase.auth.getSession();
-
-  const isAuthenticated = !!session;
+  const { isAuthenticated } = getSessionFromRequest(request);
   const url = new URL(request.url);
   const isOnAuthPage = url.pathname.startsWith("/login") ||
     url.pathname.startsWith("/register") ||

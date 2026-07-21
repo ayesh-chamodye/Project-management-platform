@@ -40,14 +40,20 @@ export default function DashboardClient() {
   useEffect(() => {
     const loadDashboard = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        console.log("[dashboard] client session", session ? { hasUser: !!session.user, email: session.user?.email } : "null");
-        if (!session?.user) {
+        let user = null;
+        try {
+          const res = await fetch("/api/auth/check", { cache: "no-store" });
+          if (res.ok) {
+            const data = await res.json();
+            user = data.user;
+          }
+        } catch {}
+        if (!user) {
           router.push("/login");
           return;
         }
 
-        const u = session.user;
+        const u = user;
         setUser({
           email: u.email || undefined,
           name: (u.user_metadata as any)?.name || u.email?.split("@")[0] || "User",

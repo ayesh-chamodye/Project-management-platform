@@ -1,16 +1,15 @@
 "use client";
 
-import { useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { getSupabaseClient } from "@/lib/supabase/client";
 import Link from "next/link";
 import { ArrowRight, BarChart3, Users, FolderOpen } from "lucide-react";
 
 export default function Home() {
   const router = useRouter();
+  const [user, setUser] = useState<{ email?: string } | null>(null);
 
   useEffect(() => {
-    const supabase = getSupabaseClient();
     const hash = window.location.hash;
 
     if (hash.includes("access_token")) {
@@ -29,11 +28,20 @@ export default function Home() {
       }
     }
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
+    (async () => {
+      let user = null;
+      try {
+        const res = await fetch("/api/auth/check", { cache: "no-store" });
+        if (res.ok) {
+          const data = await res.json();
+          user = data.user;
+        }
+      } catch {}
+      if (user) {
         router.push("/dashboard");
       }
-    });
+      setUser({ email: user.email });
+    })();
   }, [router]);
 
   return (

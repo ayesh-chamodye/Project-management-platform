@@ -1,16 +1,15 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { getSupabaseClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import AppShell from "@/components/AppShell";
 import { UserPlus, Trash2 } from "lucide-react";
 
 export default function SettingsClient() {
-  const supabase = getSupabaseClient();
   const router = useRouter();
   const [workspace, setWorkspace] = useState<any>(null);
   const [members, setMembers] = useState<any[]>([]);
+  const [user, setUser] = useState<{ email?: string } | null>(null);
   const [inviteEmail, setInviteEmail] = useState("");
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
@@ -18,11 +17,19 @@ export default function SettingsClient() {
 
   useEffect(() => {
     const init = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
+      let user = null;
+      try {
+        const res = await fetch("/api/auth/check", { cache: "no-store" });
+        if (res.ok) {
+          const data = await res.json();
+          user = data.user;
+        }
+      } catch {}
+      if (!user) {
         router.push("/login");
         return;
       }
+      setUser({ email: user.email });
       const res = await fetch("/api/workspaces");
       if (res.ok) {
         const data = await res.json();

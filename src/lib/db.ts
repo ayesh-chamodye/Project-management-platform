@@ -14,8 +14,10 @@ function getPool(): Pool {
   }
 
   if (!poolInstance) {
+    const rawConnectionString: string = connectionString;
+    const connectionStringWithSsl = rawConnectionString.includes("sslmode=") ? rawConnectionString : rawConnectionString.includes("?") ? `${rawConnectionString}&sslmode=disable` : `${rawConnectionString}?sslmode=disable`;
     poolInstance = new Pool({
-      connectionString,
+      connectionString: connectionStringWithSsl,
       ssl: { rejectUnauthorized: false },
     } as any);
 

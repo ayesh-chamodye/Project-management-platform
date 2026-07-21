@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { getSupabaseClient } from "@/lib/supabase/client";
 import { useState, useEffect } from "react";
 
 const nav = [
@@ -13,21 +12,20 @@ const nav = [
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const supabase = getSupabaseClient();
   const [userEmail, setUserEmail] = useState<string | null>(null);
 
   useEffect(() => {
     const loadUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setUserEmail(session?.user?.email || null);
+      try {
+        const res = await fetch("/api/auth/check", { cache: "no-store" });
+        if (res.ok) {
+          const data = await res.json();
+          setUserEmail(data.user?.email || null);
+        }
+      } catch {}
     };
     loadUser();
-  }, [supabase]);
-
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    window.location.href = "/login";
-  };
+  }, []);
 
   const isActive = (href: string) => pathname === href || pathname.startsWith(href + "/");
 
@@ -65,7 +63,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               <span className="hidden sm:block text-sm" style={{ color: "var(--color-muted-foreground)" }}>
                 {userEmail || "Loading..."}
               </span>
-              <button onClick={handleLogout} className="btn-secondary text-sm">Logout</button>
+              <button onClick={async () => { await fetch("/api/auth/set-session", { method: "DELETE" }); window.location.href = "/login"; }} className="btn-secondary text-sm">Logout</button>
             </div>
           </div>
         </div>
@@ -74,3 +72,4 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     </div>
   );
 }
+

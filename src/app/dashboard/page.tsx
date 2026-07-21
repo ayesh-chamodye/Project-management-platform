@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { getSupabaseClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import AppShell from "@/components/AppShell";
@@ -10,7 +9,6 @@ import { FolderKanban } from "lucide-react";
 export const dynamic = "force-dynamic";
 
 export default function DashboardClient() {
-  const supabase = getSupabaseClient();
   const router = useRouter();
   const [stats, setStats] = useState({ projects: 0 });
   const [recentProjects, setRecentProjects] = useState<any[]>([]);
@@ -35,18 +33,16 @@ export default function DashboardClient() {
 
         setUser({
           email: user.email || undefined,
-          name: (user.user_metadata as any)?.name || user.email?.split("@")[0] || "User",
+          name: user.email?.split("@")[0] || "User",
         });
 
-        const [projectsCountRes, projectsListRes] = await Promise.all([
-          supabase.from("projects").select("*", { count: "exact", head: true }),
-          supabase.from("projects").select("*", { count: "exact" }),
-        ]);
+        const projectsRes = await fetch("/api/projects", { cache: "no-store" });
 
-        setStats({
-          projects: projectsCountRes.count || 0,
-        });
-        setRecentProjects(projectsListRes.data || []);
+        if (projectsRes.ok) {
+          const data = await projectsRes.json();
+          setStats({ projects: (data.projects || []).length });
+          setRecentProjects((data.projects || []).slice(0, 5));
+        }
       } catch (e) {
         console.error("[dashboard] load error", e);
       } finally {
@@ -55,7 +51,7 @@ export default function DashboardClient() {
     };
 
     loadDashboard();
-  }, [router, supabase]);
+  }, [router]);
 
   return (
     <AppShell>
@@ -78,17 +74,12 @@ export default function DashboardClient() {
                   {loading ? "..." : stats.projects}
                 </p>
               </div>
-              <div className="h-10 w-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: "var(--color-accent)", color: "var(--color-primary)" }}>
-                <FolderKanban className="h-5 w-5" />
-              </div>
             </div>
           </div>
         </div>
 
         <div className="surface rounded-xl p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold" style={{ color: "var(--color-foreground)" }}>Recent Projects</h2>
-          </div>
+          <h2 className="text-lg font-semibold mb-4" style={{ color: "var(--color-foreground)" }}>Recent Projects</h2>
           {loading ? (
             <p style={{ color: "var(--color-muted-foreground)" }}>Loading...</p>
           ) : recentProjects.length === 0 ? (

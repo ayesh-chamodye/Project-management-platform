@@ -1,13 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseClient } from "@/lib/supabase/server";
-import { requireServerUser } from "@/lib/supabase/server-auth";
+import { getUserIdFromRequest } from "@/lib/supabase/server-auth";
+
+function getProjectId(url: URL) {
+  return url.pathname.split("/")[3];
+}
 
 export async function GET(request: NextRequest) {
   try {
-    await requireServerUser();
+    const userId = getUserIdFromRequest(request);
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const supabase = await createSupabaseClient();
-    const url = new URL(request.url);
-    const projectId = url.pathname.split("/")[3];
+    const projectId = getProjectId(new URL(request.url));
 
     if (!projectId) {
       return NextResponse.json({ error: "Project ID required" }, { status: 400 });
@@ -20,16 +27,19 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ project: data });
   } catch (e: any) {
-    return NextResponse.json({ error: e?.message || "Unauthorized" }, { status: e?.message === "Unauthorized" ? 401 : 500 });
+    return NextResponse.json({ error: e?.message || "Internal server error" }, { status: 500 });
   }
 }
 
 export async function PATCH(request: NextRequest) {
   try {
-    await requireServerUser();
+    const userId = getUserIdFromRequest(request);
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const supabase = await createSupabaseClient();
-    const url = new URL(request.url);
-    const projectId = url.pathname.split("/")[3];
+    const projectId = getProjectId(new URL(request.url));
 
     if (!projectId) {
       return NextResponse.json({ error: "Project ID required" }, { status: 400 });
@@ -52,16 +62,19 @@ export async function PATCH(request: NextRequest) {
 
     return NextResponse.json({ project: data });
   } catch (e: any) {
-    return NextResponse.json({ error: e?.message || "Unauthorized" }, { status: e?.message === "Unauthorized" ? 401 : 500 });
+    return NextResponse.json({ error: e?.message || "Internal server error" }, { status: 500 });
   }
 }
 
 export async function DELETE(request: NextRequest) {
   try {
-    await requireServerUser();
+    const userId = getUserIdFromRequest(request);
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const supabase = await createSupabaseClient();
-    const url = new URL(request.url);
-    const projectId = url.pathname.split("/")[3];
+    const projectId = getProjectId(new URL(request.url));
 
     if (!projectId) {
       return NextResponse.json({ error: "Project ID required" }, { status: 400 });
@@ -74,6 +87,6 @@ export async function DELETE(request: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (e: any) {
-    return NextResponse.json({ error: e?.message || "Unauthorized" }, { status: e?.message === "Unauthorized" ? 401 : 500 });
+    return NextResponse.json({ error: e?.message || "Internal server error" }, { status: 500 });
   }
 }

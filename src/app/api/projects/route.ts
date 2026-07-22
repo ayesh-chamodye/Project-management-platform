@@ -1,19 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseClient } from "@/lib/supabase/server";
-import { getUserIdFromRequest } from "@/lib/supabase/server-auth";
+import { getUserFromRequest } from "@/lib/supabase/server-auth";
 
 export async function GET(request: NextRequest) {
   try {
-    const userId = getUserIdFromRequest(request);
-    if (!userId) {
+    const user = getUserFromRequest(request);
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const supabase = await createSupabaseClient();
-    const { data, error } = await supabase.from("projects").select("*");
+    const { data, error } = await supabase.from("projects").select("*").order("created_at", { ascending: false });
+
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
+
     return NextResponse.json({ projects: data || [] });
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || "Internal server error" }, { status: 500 });
@@ -22,28 +24,27 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const user = getUserIdFromRequest(request);
+    const user = getUserFromRequest(request);
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const supabase = await createSupabaseClient();
     const body = await request.json();
-    const { name, description, status, workspaceId } = body;
+    const { name, description, status } = body;
 
     if (!name) {
       return NextResponse.json({ error: "name is required" }, { status: 400 });
     }
 
+    const supabase = await createSupabaseClient();
     const { data, error } = await supabase
       .from("projects")
-      .insert([{
+      .insert({
         name,
         description: description || null,
         status: status || "active",
-        workspace_id: workspaceId || null,
         created_by_id: user.id,
-      }])
+      })
       .select()
       .single();
 

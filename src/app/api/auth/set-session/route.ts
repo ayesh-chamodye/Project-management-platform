@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
+export async function DELETE() {
+  const response = NextResponse.json({ success: true });
+  response.cookies.delete("sb-access-token");
+  response.cookies.delete("sb-refresh-token");
+  return response;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const { access_token, refresh_token } = await request.json();

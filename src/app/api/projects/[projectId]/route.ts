@@ -1,26 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseClient } from "@/lib/supabase/server";
-import { getUserIdFromRequest } from "@/lib/supabase/server-auth";
+import { getUserFromRequest } from "@/lib/supabase/server-auth";
 
-function getProjectId(url: URL) {
-  return url.pathname.split("/")[3];
-}
-
-export async function GET(request: NextRequest) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ projectId: string }> }) {
   try {
-    const userId = getUserIdFromRequest(request);
-    if (!userId) {
+    const user = getUserFromRequest(request);
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const { projectId } = await params;
     const supabase = await createSupabaseClient();
-    const projectId = getProjectId(new URL(request.url));
+    const { data, error } = await supabase
+      .from("projects")
+      .select("*")
+      .eq("id", projectId)
+      .single();
 
-    if (!projectId) {
-      return NextResponse.json({ error: "Project ID required" }, { status: 400 });
-    }
-
-    const { data, error } = await supabase.from("projects").select("*").eq("id", projectId).single();
     if (error || !data) {
       return NextResponse.json({ error: "Project not found" }, { status: 404 });
     }
@@ -31,20 +27,15 @@ export async function GET(request: NextRequest) {
   }
 }
 
-export async function PATCH(request: NextRequest) {
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ projectId: string }> }) {
   try {
-    const userId = getUserIdFromRequest(request);
-    if (!userId) {
+    const user = getUserFromRequest(request);
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const { projectId } = await params;
     const supabase = await createSupabaseClient();
-    const projectId = getProjectId(new URL(request.url));
-
-    if (!projectId) {
-      return NextResponse.json({ error: "Project ID required" }, { status: 400 });
-    }
-
     const body = await request.json();
     const updates: Record<string, any> = {};
     if (body.name !== undefined) updates.name = body.name;
@@ -55,7 +46,13 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: "No valid fields to update" }, { status: 400 });
     }
 
-    const { data, error } = await supabase.from("projects").update(updates).eq("id", projectId).select().single();
+    const { data, error } = await supabase
+      .from("projects")
+      .update(updates)
+      .eq("id", projectId)
+      .select()
+      .single();
+
     if (error || !data) {
       return NextResponse.json({ error: "Project not found" }, { status: 404 });
     }
@@ -66,21 +63,20 @@ export async function PATCH(request: NextRequest) {
   }
 }
 
-export async function DELETE(request: NextRequest) {
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ projectId: string }> }) {
   try {
-    const userId = getUserIdFromRequest(request);
-    if (!userId) {
+    const user = getUserFromRequest(request);
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const { projectId } = await params;
     const supabase = await createSupabaseClient();
-    const projectId = getProjectId(new URL(request.url));
+    const { error } = await supabase
+      .from("projects")
+      .delete()
+      .eq("id", projectId);
 
-    if (!projectId) {
-      return NextResponse.json({ error: "Project ID required" }, { status: 400 });
-    }
-
-    const { error } = await supabase.from("projects").delete().eq("id", projectId);
     if (error) {
       return NextResponse.json({ error: "Project not found" }, { status: 404 });
     }

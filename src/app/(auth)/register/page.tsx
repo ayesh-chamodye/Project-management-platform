@@ -15,22 +15,6 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const supabase = getSupabaseClient();
 
-  useEffect(() => {
-    (async () => {
-      let user = null;
-      try {
-        const res = await fetch("/api/auth/check", { cache: "no-store" });
-        if (res.ok) {
-          const data = await res.json();
-          user = data.user;
-        }
-      } catch {}
-      if (user) {
-        router.push("/dashboard");
-      }
-    })();
-  }, [router]);
-
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");

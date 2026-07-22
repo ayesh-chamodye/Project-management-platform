@@ -1,75 +1,104 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useState, useEffect } from "react";
-
-const nav = [
-  { href: "/dashboard", label: "Dashboard" },
-  { href: "/profile", label: "Profile" },
-  { href: "/settings", label: "Settings" },
-];
+import { usePathname, useRouter } from "next/navigation";
+import { LayoutDashboard, FolderOpen, Settings, User, LogOut, ChevronDown } from "lucide-react";
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const router = useRouter();
+  const [email, setEmail] = useState<string>("");
+  const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
-    const loadUser = async () => {
-      try {
-        const res = await fetch("/api/auth/check", { cache: "no-store" });
-        if (res.ok) {
-          const data = await res.json();
-          setUserEmail(data.user?.email || null);
-        }
-      } catch {}
-    };
-    loadUser();
+    fetch("/api/auth/check", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data?.user?.email) setEmail(data.user.email);
+      })
+      .catch(() => {});
   }, []);
 
-  const isActive = (href: string) => pathname === href || pathname.startsWith(href + "/");
+  async function handleLogout() {
+    await fetch("/api/auth/set-session", { method: "DELETE" });
+    router.push("/login");
+  }
+
+  const links = [
+    { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+    { href: "/projects", label: "Projects", icon: FolderOpen },
+    { href: "/settings", label: "Settings", icon: Settings },
+    { href: "/profile", label: "Profile", icon: User },
+  ];
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: "var(--color-background)" }}>
-      <header className="surface sticky top-0 z-30" style={{ borderBottom: "1px solid var(--color-border)" }}>
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="flex h-16 items-center justify-between">
-            <div className="flex items-center gap-6">
-              <Link href="/dashboard" className="flex items-center gap-2">
-                <div className="h-9 w-9 rounded-lg flex items-center justify-center" style={{ backgroundColor: "var(--color-primary)" }}>
-                  <svg className="h-5 w-5" style={{ color: "var(--color-primary-foreground)" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 4a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-                  </svg>
-                </div>
-                <span className="text-lg font-bold" style={{ color: "var(--color-foreground)" }}>ProjectFlow</span>
+    <div className="min-h-screen flex" style={{ backgroundColor: "var(--color-background)" }}>
+      <aside className="w-64 surface border-r hidden md:flex flex-col" style={{ borderColor: "var(--color-border)" }}>
+        <div className="p-4">
+          <Link href="/dashboard" className="flex items-center gap-3">
+            <div className="h-8 w-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: "var(--color-primary)" }}>
+              <svg className="h-5 w-5" style={{ color: "var(--color-primary-foreground)" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 4a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+              </svg>
+            </div>
+            <span className="text-lg font-bold" style={{ color: "var(--color-foreground)" }}>ProjectFlow</span>
+          </Link>
+        </div>
+        <nav className="flex-1 px-3 space-y-1">
+          {links.map((link) => {
+            const Icon = link.icon;
+            const active = pathname === link.href || pathname.startsWith(link.href + "/");
+            return (
+              <Link
+                key={link.href}
+                href={link.href}
+                className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  active ? "" : "hover:opacity-80"
+                }`}
+                style={{
+                  color: active ? "var(--color-primary-foreground)" : "var(--color-foreground)",
+                  backgroundColor: active ? "var(--color-primary)" : "transparent",
+                }}
+              >
+                <Icon className="h-4 w-4" />
+                {link.label}
               </Link>
-              <nav className="hidden md:flex items-center gap-1">
-                {nav.map((item) => (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className="px-3 py-2 rounded-lg text-sm font-medium transition-colors relative"
-                    style={{
-                      color: isActive(item.href) ? "var(--color-primary)" : "var(--color-muted-foreground)",
-                      backgroundColor: isActive(item.href) ? "var(--color-accent)" : "transparent",
-                    }}
-                  >
-                    {item.label}
+            );
+          })}
+        </nav>
+        <div className="p-4 border-t" style={{ borderColor: "var(--color-border)" }}>
+          <button onClick={handleLogout} className="flex items-center gap-2 text-sm font-medium w-full px-3 py-2 rounded-lg transition-colors hover:opacity-80" style={{ color: "var(--color-danger)", backgroundColor: "transparent" }}>
+            <LogOut className="h-4 w-4" />
+            Logout
+          </button>
+        </div>
+      </aside>
+
+      <div className="flex-1 flex flex-col min-h-screen">
+        <header className="h-14 surface border-b flex items-center justify-between px-4 md:hidden" style={{ borderColor: "var(--color-border)" }}>
+          <Link href="/dashboard" className="text-lg font-bold" style={{ color: "var(--color-foreground)" }}>ProjectFlow</Link>
+          <div className="relative">
+            <button onClick={() => setMenuOpen(!menuOpen)} className="flex items-center gap-1 text-sm" style={{ color: "var(--color-foreground)" }}>
+              {email || "Menu"}
+              <ChevronDown className="h-4 w-4" />
+            </button>
+            {menuOpen && (
+              <div className="absolute right-0 mt-2 w-48 surface rounded-lg shadow-lg z-50 py-2" style={{ border: "1px solid var(--color-border)" }}>
+                {links.map((link) => (
+                  <Link key={link.href} href={link.href} onClick={() => setMenuOpen(false)} className="block px-4 py-2 text-sm hover:opacity-80" style={{ color: "var(--color-foreground)" }}>
+                    {link.label}
                   </Link>
                 ))}
-              </nav>
-            </div>
-            <div className="flex items-center gap-3">
-              <span className="hidden sm:block text-sm" style={{ color: "var(--color-muted-foreground)" }}>
-                {userEmail || "Loading..."}
-              </span>
-              <button onClick={async () => { await fetch("/api/auth/set-session", { method: "DELETE" }); window.location.href = "/login"; }} className="btn-secondary text-sm">Logout</button>
-            </div>
+                <button onClick={handleLogout} className="block w-full text-left px-4 py-2 text-sm" style={{ color: "var(--color-danger)" }}>
+                  Logout
+                </button>
+              </div>
+            )}
           </div>
-        </div>
-      </header>
-      <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">{children}</main>
+        </header>
+        <main className="flex-1 p-4 md:p-8 overflow-auto">{children}</main>
+      </div>
     </div>
   );
 }
-

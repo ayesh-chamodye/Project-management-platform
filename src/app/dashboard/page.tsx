@@ -1,108 +1,90 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { FolderOpen, ArrowRight, Plus } from "lucide-react";
 import AppShell from "@/components/AppShell";
-import { FolderKanban } from "lucide-react";
 
-export const dynamic = "force-dynamic";
-
-export default function DashboardClient() {
+export default function DashboardPage() {
   const router = useRouter();
-  const [stats, setStats] = useState({ projects: 0 });
-  const [recentProjects, setRecentProjects] = useState<any[]>([]);
+  const [projects, setProjects] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState<{ email?: string; name?: string } | null>(null);
 
   useEffect(() => {
-    const loadDashboard = async () => {
+    (async () => {
       try {
-        let user = null;
-        try {
-          const res = await fetch("/api/auth/check", { cache: "no-store" });
-          if (res.ok) {
-            const data = await res.json();
-            user = data.user;
-          }
-        } catch {}
-        if (!user) {
+        const res = await fetch("/api/auth/check", { cache: "no-store" });
+        if (!res.ok) {
           router.push("/login");
           return;
         }
-
-        setUser({
-          email: user.email || undefined,
-          name: user.email?.split("@")[0] || "User",
-        });
-
-        const projectsRes = await fetch("/api/projects", { cache: "no-store" });
-
-        if (projectsRes.ok) {
-          const data = await projectsRes.json();
-          setStats({ projects: (data.projects || []).length });
-          setRecentProjects((data.projects || []).slice(0, 5));
+        const pr = await fetch("/api/projects");
+        if (pr.ok) {
+          const data = await pr.json();
+          setProjects(data.projects || []);
         }
-      } catch (e) {
-        console.error("[dashboard] load error", e);
       } finally {
         setLoading(false);
       }
-    };
-
-    loadDashboard();
+    })();
   }, [router]);
+
+  if (loading) {
+    return (
+      <AppShell>
+        <div className="flex items-center justify-center h-64">
+          <p style={{ color: "var(--color-muted-foreground)" }}>Loading...</p>
+        </div>
+      </AppShell>
+    );
+  }
 
   return (
     <AppShell>
-      <div className="space-y-8">
+      <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight" style={{ color: "var(--color-foreground)" }}>
-            Welcome back, {user?.name || "User"}
-          </h1>
+          <h1 className="text-3xl font-bold" style={{ color: "var(--color-foreground)" }}>Dashboard</h1>
           <p className="mt-1 text-sm" style={{ color: "var(--color-muted-foreground)" }}>
-            Here's an overview of your projects.
+            {projects.length} {projects.length === 1 ? "project" : "projects"} total
           </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="surface rounded-xl p-5">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium" style={{ color: "var(--color-muted-foreground)" }}>Total Projects</p>
-                <p className="text-3xl font-bold mt-2" style={{ color: "var(--color-foreground)" }}>
-                  {loading ? "..." : stats.projects}
-                </p>
-              </div>
-            </div>
+        {projects.length === 0 ? (
+          <div className="surface rounded-xl p-12 text-center space-y-4" style={{ border: "1px solid var(--color-border)" }}>
+            <FolderOpen className="h-12 w-12 mx-auto" style={{ color: "var(--color-muted-foreground)" }} />
+            <h2 className="text-xl font-semibold" style={{ color: "var(--color-foreground)" }}>No projects yet</h2>
+            <p className="text-sm max-w-sm mx-auto" style={{ color: "var(--color-muted-foreground)" }}>
+              Get started by creating your first project.
+            </p>
+            <Link href="/projects/new" className="btn-primary inline-flex items-center gap-2">
+              <Plus className="h-4 w-4" />
+              New Project
+            </Link>
           </div>
-        </div>
-
-        <div className="surface rounded-xl p-6">
-          <h2 className="text-lg font-semibold mb-4" style={{ color: "var(--color-foreground)" }}>Recent Projects</h2>
-          {loading ? (
-            <p style={{ color: "var(--color-muted-foreground)" }}>Loading...</p>
-          ) : recentProjects.length === 0 ? (
-            <div className="text-center py-8">
-              <FolderKanban className="h-10 w-10 mx-auto mb-3" style={{ color: "var(--color-muted-foreground)" }} />
-              <p style={{ color: "var(--color-muted-foreground)" }}>No projects yet.</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {recentProjects.map((project) => (
-                <Link key={project.id} href={`/project/${project.id}`} className="flex items-center justify-between p-4 rounded-lg hover:shadow-md transition-shadow" style={{ border: "1px solid var(--color-border)" }}>
+        ) : (
+          <div className="space-y-3">
+            <h2 className="text-sm font-medium uppercase tracking-wider" style={{ color: "var(--color-muted-foreground)" }}>Recent Projects</h2>
+            <div className="space-y-2">
+              {projects.slice(0, 5).map((project) => (
+                <Link
+                  key={project.id}
+                  href={`/projects/${project.id}`}
+                  className="surface rounded-lg px-4 py-3 flex items-center justify-between hover:shadow-sm transition-shadow"
+                  style={{ border: "1px solid var(--color-border)" }}
+                >
                   <div>
-                    <h3 className="font-medium" style={{ color: "var(--color-foreground)" }}>{project.name}</h3>
-                    <p className="text-sm" style={{ color: "var(--color-muted-foreground)" }}>{project.description || "No description"}</p>
+                    <p className="font-medium text-sm" style={{ color: "var(--color-foreground)" }}>{project.name}</p>
+                    <p className="text-xs mt-0.5" style={{ color: "var(--color-muted-foreground)" }}>
+                      {project.status} &middot; {new Date(project.created_at).toLocaleDateString()}
+                    </p>
                   </div>
-                  <span className="text-xs px-2 py-1 rounded-md capitalize" style={{ backgroundColor: "var(--color-accent)", color: "var(--color-foreground)" }}>
-                    {project.status || "active"}
-                  </span>
+                  <ArrowRight className="h-4 w-4" style={{ color: "var(--color-muted-foreground)" }} />
                 </Link>
               ))}
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </AppShell>
   );

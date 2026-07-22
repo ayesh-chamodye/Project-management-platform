@@ -39,8 +39,10 @@ export default function Home() {
       } catch {}
       if (user) {
         router.push("/dashboard");
+        setUser({ email: user.email });
+      } else {
+        setUser(null);
       }
-      setUser({ email: user.email });
     })();
   }, [router]);
 

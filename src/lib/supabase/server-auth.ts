@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createSupabaseClient } from "./server";
 
 function parseJwt(token: string) {
   try {
@@ -17,7 +16,7 @@ function parseJwt(token: string) {
   }
 }
 
-export function getUserIdFromRequest(request: NextRequest) {
+export function getRawUserFromRequest(request: NextRequest) {
   const cookieHeader = request.headers.get("cookie") || "";
   const cookies = Object.fromEntries(
     cookieHeader.split(";").map((c) => {
@@ -31,11 +30,30 @@ export function getUserIdFromRequest(request: NextRequest) {
   const payload = parseJwt(accessToken);
   if (!payload || !payload.exp || Date.now() > payload.exp * 1000) return null;
 
-  return payload.sub;
+  return payload;
+}
+
+export function getUserIdFromRequest(request: NextRequest) {
+  const payload = getRawUserFromRequest(request);
+  return payload ? payload.sub : null;
+}
+
+export function getUserFromRequest(request: NextRequest) {
+  const payload = getRawUserFromRequest(request);
+  if (!payload) return null;
+  return {
+    id: payload.sub,
+    email: payload.email,
+    name: payload.user_metadata?.name || payload.name || null,
+  };
 }
 
 export function requireAuthFromRequest(request: NextRequest) {
-  const userId = getUserIdFromRequest(request);
-  if (!userId) throw new Error("Unauthorized");
-  return { id: userId };
+  const user = getUserFromRequest(request);
+  if (!user) throw new Error("Unauthorized");
+  return user;
+}
+
+export function unauthorizedResponse(message: string) {
+  return NextResponse.json({ error: message }, { status: 401 });
 }

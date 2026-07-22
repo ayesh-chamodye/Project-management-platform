@@ -440,7 +440,7 @@ create policy "Members can view attachments"
 create or replace function public.handle_new_user()
 returns trigger as $$
 begin
-  insert into public.users (id, name, email, avatar_url, password)
+  insert into public.users (id, name, email, image, password)
   values (new.id, new.raw_user_meta_data->>'name', new.email, new.raw_user_meta_data->>'avatar_url', new.raw_user_meta_data->>'password')
   on conflict (id) do nothing;
   return new;

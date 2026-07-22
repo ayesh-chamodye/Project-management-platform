@@ -16,7 +16,7 @@ function parseJwt(token: string) {
   }
 }
 
-const PROTECTED_PREFIXES = ["/dashboard"];
+const PROTECTED_PREFIXES = ["/dashboard", "/workspace", "/project", "/projects", "/settings", "/profile"];
 
 function isProtectedPath(pathname: string): boolean {
   return PROTECTED_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));

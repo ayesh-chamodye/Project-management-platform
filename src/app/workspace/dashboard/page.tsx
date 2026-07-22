@@ -15,6 +15,7 @@ export default function WorkspaceSelectPage() {
   const [user, setUser] = useState<{ name?: string; email?: string; image?: string } | null>(null);
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [name, setName] = useState("");
+  const [error, setError] = useState("");
 
   useEffect(() => {
     (async () => {
@@ -38,17 +39,23 @@ export default function WorkspaceSelectPage() {
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
-    if (!name.trim()) return;
+    setError("");
+
+    const trimmed = name.trim();
+    if (!trimmed) return;
 
     const res = await fetch("/api/workspaces", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: name.trim() }),
+      body: JSON.stringify({ name: trimmed }),
     });
 
     if (res.ok) {
       const data = await res.json();
       router.push(`/workspace/${data.workspace.id}/dashboard`);
+    } else {
+      const body = await res.json().catch(() => ({ error: "Failed to create workspace" }));
+      setError(body.error || "Failed to create workspace");
     }
   }
 
@@ -121,6 +128,11 @@ export default function WorkspaceSelectPage() {
           )}
 
           <form onSubmit={handleCreate} className="mt-12">
+            {error && (
+              <div className="mb-3 px-4 py-3 rounded-lg text-sm" style={{ backgroundColor: "rgba(220, 38, 38, 0.1)", color: "var(--color-danger)", border: "1px solid rgba(220, 38, 38, 0.2)" }}>
+                {error}
+              </div>
+            )}
             <div className="flex items-center gap-2">
               <input
                 type="text"

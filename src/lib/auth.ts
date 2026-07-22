@@ -4,10 +4,17 @@ import { getUserFromRequest } from "@/lib/supabase/server-auth";
 
 export async function getServerUser() {
   const cookieStore = await cookies();
-  const user = getUserFromRequest({
-    headers: new Headers({ cookie: cookieStore.toString() }),
-  } as unknown as Request);
-  
+  const requestLike = {
+    headers: {
+      get: (name: string) => {
+        const cookieHeader = cookieStore.toString();
+        if (name.toLowerCase() === "cookie") return cookieHeader || null;
+        return null;
+      },
+    } as Headers,
+  };
+  const user = getUserFromRequest(requestLike);
+
   if (!user) return null;
 
   const supabase = await createSupabaseClient();

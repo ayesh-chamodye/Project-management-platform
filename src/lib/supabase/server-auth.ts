@@ -1,4 +1,10 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
+
+interface RequestLike {
+  headers: {
+    get(name: string): string | null;
+  };
+}
 
 function parseJwt(token: string) {
   try {
@@ -16,7 +22,7 @@ function parseJwt(token: string) {
   }
 }
 
-export function getRawUserFromRequest(request: NextRequest) {
+export function getRawUserFromRequest(request: RequestLike) {
   const cookieHeader = request.headers.get("cookie") || "";
   const cookies = Object.fromEntries(
     cookieHeader.split(";").map((c) => {
@@ -33,12 +39,12 @@ export function getRawUserFromRequest(request: NextRequest) {
   return payload;
 }
 
-export function getUserIdFromRequest(request: NextRequest) {
+export function getUserIdFromRequest(request: RequestLike) {
   const payload = getRawUserFromRequest(request);
   return payload ? payload.sub : null;
 }
 
-export function getUserFromRequest(request: NextRequest) {
+export function getUserFromRequest(request: RequestLike) {
   const payload = getRawUserFromRequest(request);
   if (!payload) return null;
   return {
@@ -48,7 +54,7 @@ export function getUserFromRequest(request: NextRequest) {
   };
 }
 
-export function requireAuthFromRequest(request: NextRequest) {
+export function requireAuthFromRequest(request: RequestLike) {
   const user = getUserFromRequest(request);
   if (!user) throw new Error("Unauthorized");
   return user;

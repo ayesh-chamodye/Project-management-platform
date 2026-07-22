@@ -15,7 +15,7 @@ export async function GET(
 
     const { data: members, error } = await supabase
       .from("workspace_members")
-      .select("*, profiles:user_id(name, email, avatar_url)")
+      .select("*, profiles:user_id(name, email, image)")
       .eq("workspace_id", workspaceId)
       .order("joined_at", { ascending: false });
 
@@ -51,7 +51,7 @@ export async function POST(
     }
 
     const { data: profile, error: profileError } = await supabase
-      .from("profiles")
+      .from("users")
       .select("id")
       .eq("email", email)
       .single();

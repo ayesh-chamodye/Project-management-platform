@@ -33,10 +33,10 @@ export default async function WorkspaceSelectPage() {
             <span className="text-sm text-gray-600 dark:text-gray-400">
               {user.name}
             </span>
-            {user.profile?.avatar_url && (
+            {user.profile?.image && (
               <div
                 className="h-8 w-8 rounded-full bg-cover bg-center"
-                style={{ backgroundImage: `url(${user.profile.avatar_url})` }}
+                style={{ backgroundImage: `url(${user.profile.image})` }}
               />
             )}
           </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { formatDistanceToNow } from "date-fns";
 import {
@@ -44,22 +44,7 @@ export default function DashboardPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const authRes = await fetch("/api/auth/check", { cache: "no-store" });
-        if (!authRes.ok) {
-          router.push("/login");
-          return;
-        }
-
-        await Promise.all([fetchStats(), fetchWorkspaces(), fetchRecentProjects()]);
-      } catch {}
-      setLoading(false);
-    })();
-  }, [router]);
-
-  async function fetchStats() {
+  const fetchStats = useCallback(async () => {
     try {
       const res = await fetch("/api/dashboard/summary", { cache: "no-store" });
       if (res.ok) {
@@ -67,9 +52,9 @@ export default function DashboardPage() {
         if (data.stats) setStats(data.stats);
       }
     } catch {}
-  }
+  }, []);
 
-  async function fetchWorkspaces() {
+  const fetchWorkspaces = useCallback(async () => {
     try {
       const res = await fetch("/api/workspaces", { cache: "no-store" });
       if (res.ok) {
@@ -77,9 +62,9 @@ export default function DashboardPage() {
         if (data.workspaces) setWorkspaces(data.workspaces.slice(0, 5));
       }
     } catch {}
-  }
+  }, []);
 
-  async function fetchRecentProjects() {
+  const fetchRecentProjects = useCallback(async () => {
     try {
       const workspaceIds = workspaces.map((w) => w.id);
       if (workspaceIds.length === 0) return;
@@ -97,7 +82,22 @@ export default function DashboardPage() {
       allProjects.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
       setProjects(allProjects.slice(0, 8));
     } catch {}
-  }
+  }, [workspaces]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const authRes = await fetch("/api/auth/check", { cache: "no-store" });
+        if (!authRes.ok) {
+          router.push("/login");
+          return;
+        }
+
+        await Promise.all([fetchStats(), fetchWorkspaces(), fetchRecentProjects()]);
+      } catch {}
+      setLoading(false);
+    })();
+  }, [router, fetchStats, fetchWorkspaces, fetchRecentProjects]);
 
   const statCards = [
     { label: "Workspaces", value: stats.workspaceCount, icon: Users, color: "bg-indigo-500" },

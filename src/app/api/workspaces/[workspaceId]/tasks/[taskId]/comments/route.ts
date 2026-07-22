@@ -15,7 +15,7 @@ export async function GET(
 
     const { data: comments, error } = await supabase
       .from("comments")
-      .select("*, author:author_id(name, avatar_url)")
+      .select("*, author:author_id(name, image)")
       .eq("task_id", taskId)
       .order("created_at", { ascending: false });
 

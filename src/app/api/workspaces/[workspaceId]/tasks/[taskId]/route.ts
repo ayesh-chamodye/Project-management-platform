@@ -15,7 +15,7 @@ export async function GET(
 
     const { data: task, error } = await supabase
       .from("tasks")
-      .select("*, assignee:assignee_id(name, avatar_url)")
+      .select("*, assignee:assignee_id(name, image)")
       .eq("id", taskId)
       .single();
 
@@ -23,7 +23,7 @@ export async function GET(
 
     const { data: comments } = await supabase
       .from("comments")
-      .select("*, author:author_id(name, avatar_url)")
+      .select("*, author:author_id(name, image)")
       .eq("task_id", taskId)
       .is("parent_id", null)
       .order("created_at", { ascending: false });

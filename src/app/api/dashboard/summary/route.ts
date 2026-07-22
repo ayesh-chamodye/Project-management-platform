@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
       .select("workspace_id")
       .eq("user_id", user.id);
 
-    const workspaceIds = (memberRows || []).map((m: any) => m.workspace_id);
+    const workspaceIds = (memberRows || []).map((m) => m.workspace_id as string);
     const workspaceCount = workspaceIds.length;
 
     let projectCount = 0;
@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
         .in("workspace_id", workspaceIds);
       projectCount = (projects || []).length;
 
-      const projectIds = (projects || []).map((p: any) => p.id);
+      const projectIds = (projects || []).map((p) => p.id as string);
 
       if (projectIds.length > 0) {
         const { data: boards } = await supabase
@@ -37,14 +37,14 @@ export async function GET(request: NextRequest) {
           .in("project_id", projectIds);
         boardCount = (boards || []).length;
 
-        const boardIds = (boards || []).map((b: any) => b.id);
+        const boardIds = (boards || []).map((b) => b.id as string);
 
         if (boardIds.length > 0) {
           const { data: columns } = await supabase
             .from("columns")
             .select("id")
             .in("board_id", boardIds);
-          const columnIds = (columns || []).map((c: any) => c.id);
+          const columnIds = (columns || []).map((c) => c.id as string);
 
           if (columnIds.length > 0) {
             const { data: tasks } = await supabase

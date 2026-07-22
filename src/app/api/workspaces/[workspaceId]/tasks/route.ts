@@ -40,7 +40,7 @@ export async function GET(
 
     const { data: tasks, error } = await supabase
       .from("tasks")
-      .select("*, assignee:assignee_id(name, avatar_url)")
+      .select("*, assignee:assignee_id(name, image)")
       .in("column_id", (columns || []).map((c: { id: string }) => c.id))
       .order("position", { ascending: true });
 

@@ -19,7 +19,7 @@ export async function getServerUser() {
 
   const supabase = await createSupabaseClient();
   const { data: profile } = await supabase
-    .from("profiles")
+    .from("users")
     .select("*")
     .eq("id", user.id)
     .single();

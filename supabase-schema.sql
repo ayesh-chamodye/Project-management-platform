@@ -1,28 +1,49 @@
 -- Supabase SQL migration for ProjectFlow
 -- Run this in your Supabase project SQL Editor
 
--- Profiles table (extends auth.users)
-create table public.profiles (
-  id uuid references auth.users(id) primary key,
-  name text,
-  avatar_url text,
-  created_at timestamp with time zone default now(),
-  updated_at timestamp with time zone default now()
+-- Users
+create table public.users (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  email text not null unique,
+  email_verified timestamp without time zone,
+  image text,
+  password text,
+  created_at timestamp without time zone default now(),
+  updated_at timestamp without time zone default now()
 );
 
-alter table public.profiles enable row level security;
+-- Accounts
+create table public.accounts (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references public.users(id) not null,
+  type text not null,
+  provider text not null,
+  provider_account_id text not null,
+  refresh_token text,
+  access_token text,
+  expires_at integer,
+  token_type text,
+  scope text,
+  id_token text,
+  session_state text
+);
 
-create policy "Users can view own profile"
-  on public.profiles for select
-  using (auth.uid() = id);
+-- Sessions
+create table public.sessions (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references public.users(id) not null,
+  expires_at timestamp without time zone not null,
+  session_token text not null unique
+);
 
-create policy "Users can update own profile"
-  on public.profiles for update
-  using (auth.uid() = id);
-
-create policy "Users can insert own profile"
-  on public.profiles for insert
-  with check (auth.uid() = id);
+-- Verification tokens
+create table public.verification_tokens (
+  id uuid primary key default gen_random_uuid(),
+  email text not null,
+  token text not null unique,
+  expires_at timestamp without time zone not null
+);
 
 -- Workspaces
 create table public.workspaces (
@@ -30,9 +51,9 @@ create table public.workspaces (
   name text not null,
   slug text not null unique,
   icon text,
-  owner_id uuid references auth.users(id) not null,
-  created_at timestamp with time zone default now(),
-  updated_at timestamp with time zone default now()
+  owner_id uuid references public.users(id) not null,
+  created_at timestamp without time zone default now(),
+  updated_at timestamp without time zone default now()
 );
 
 alter table public.workspaces enable row level security;
@@ -56,9 +77,9 @@ create policy "Owners can delete workspaces"
 create table public.workspace_members (
   id uuid primary key default gen_random_uuid(),
   workspace_id uuid references public.workspaces(id) on delete cascade not null,
-  user_id uuid references auth.users(id) on delete cascade not null,
+  user_id uuid references public.users(id) on delete cascade not null,
   role text not null default 'member',
-  joined_at timestamp with time zone default now(),
+  joined_at timestamp without time zone default now(),
   unique(workspace_id, user_id)
 );
 
@@ -85,9 +106,9 @@ create table public.projects (
   description text,
   color text default '#6366f1',
   workspace_id uuid references public.workspaces(id) on delete cascade not null,
-  created_by_id uuid references auth.users(id) not null,
-  created_at timestamp with time zone default now(),
-  updated_at timestamp with time zone default now()
+  created_by_id uuid references public.users(id) not null,
+  created_at timestamp without time zone default now(),
+  updated_at timestamp without time zone default now()
 );
 
 alter table public.projects enable row level security;
@@ -126,9 +147,9 @@ create table public.boards (
   name text not null,
   description text,
   project_id uuid references public.projects(id) on delete cascade not null,
-  created_by_id uuid references auth.users(id) not null,
-  created_at timestamp with time zone default now(),
-  updated_at timestamp with time zone default now()
+  created_by_id uuid references public.users(id) not null,
+  created_at timestamp without time zone default now(),
+  updated_at timestamp without time zone default now()
 );
 
 alter table public.boards enable row level security;
@@ -172,8 +193,8 @@ create table public.columns (
   color text,
   position integer not null default 0,
   board_id uuid references public.boards(id) on delete cascade not null,
-  created_at timestamp with time zone default now(),
-  updated_at timestamp with time zone default now()
+  created_at timestamp without time zone default now(),
+  updated_at timestamp without time zone default now()
 );
 
 alter table public.columns enable row level security;
@@ -204,12 +225,12 @@ create table public.tasks (
   priority text not null default 'medium',
   status text not null default 'todo',
   position integer not null default 0,
-  due_date timestamp with time zone,
-  assignee_id uuid references auth.users(id),
+  due_date timestamp without time zone,
+  assignee_id uuid references public.users(id),
   column_id uuid references public.columns(id) on delete cascade not null,
-  created_by_id uuid references auth.users(id) not null,
-  created_at timestamp with time zone default now(),
-  updated_at timestamp with time zone default now()
+  created_by_id uuid references public.users(id) not null,
+  created_at timestamp without time zone default now(),
+  updated_at timestamp without time zone default now()
 );
 
 alter table public.tasks enable row level security;
@@ -259,10 +280,10 @@ create table public.comments (
   id uuid primary key default gen_random_uuid(),
   content text not null,
   task_id uuid references public.tasks(id) on delete cascade not null,
-  author_id uuid references auth.users(id) on delete cascade not null,
+  author_id uuid references public.users(id) on delete cascade not null,
   parent_id uuid references public.comments(id) on delete cascade,
-  created_at timestamp with time zone default now(),
-  updated_at timestamp with time zone default now()
+  created_at timestamp without time zone default now(),
+  updated_at timestamp without time zone default now()
 );
 
 alter table public.comments enable row level security;
@@ -309,8 +330,8 @@ create table public.attachments (
   file_type text,
   file_size integer,
   task_id uuid references public.tasks(id) on delete cascade not null,
-  uploaded_by_id uuid references auth.users(id) not null,
-  created_at timestamp with time zone default now()
+  uploaded_by_id uuid references public.users(id) not null,
+  created_at timestamp without time zone default now()
 );
 
 alter table public.attachments enable row level security;
@@ -352,9 +373,9 @@ create table public.activity_logs (
   entity_type text not null,
   entity_id uuid not null,
   metadata jsonb,
-  user_id uuid references auth.users(id) not null,
+  user_id uuid references public.users(id) not null,
   workspace_id uuid references public.workspaces(id) on delete cascade not null,
-  created_at timestamp with time zone default now()
+  created_at timestamp without time zone default now()
 );
 
 alter table public.activity_logs enable row level security;
@@ -369,6 +390,26 @@ create policy "Members can view activity logs"
 create policy "System can create activity logs"
   on public.activity_logs for insert
   with check (user_id = auth.uid());
+
+-- Notifications
+create table public.notifications (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references public.users(id) not null,
+  title text not null,
+  message text not null,
+  is_read boolean not null default false,
+  created_at timestamp without time zone default now()
+);
+
+alter table public.notifications enable row level security;
+
+create policy "Users can view own notifications"
+  on public.notifications for select
+  using (user_id = auth.uid());
+
+create policy "Users can update own notifications"
+  on public.notifications for update
+  using (user_id = auth.uid());
 
 -- Storage bucket for attachments
 insert into storage.buckets (id, name, public) values ('attachments', 'attachments', false)
@@ -399,8 +440,8 @@ create policy "Members can view attachments"
 create or replace function public.handle_new_user()
 returns trigger as $$
 begin
-  insert into public.profiles (id, name, avatar_url)
-  values (new.id, new.raw_user_meta_data->>'name', new.raw_user_meta_data->>'avatar_url')
+  insert into public.users (id, name, email, avatar_url, password)
+  values (new.id, new.raw_user_meta_data->>'name', new.email, new.raw_user_meta_data->>'avatar_url', new.raw_user_meta_data->>'password')
   on conflict (id) do nothing;
   return new;
 end;

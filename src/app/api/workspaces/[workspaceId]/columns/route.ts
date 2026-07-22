@@ -24,7 +24,7 @@ interface TaskRow {
   created_by_id: string;
   created_at: string;
   updated_at: string;
-  assignee?: { name?: string; avatar_url?: string };
+  assignee?: { name?: string; image?: string };
 }
 
 export async function GET(
@@ -65,7 +65,7 @@ export async function GET(
     if (columnIds.length > 0) {
       const { data: tasksData } = await supabase
         .from("tasks")
-        .select("*, assignee:assignee_id(name, avatar_url)")
+        .select("*, assignee:assignee_id(name, image)")
         .in("column_id", columnIds)
         .order("position", { ascending: true });
       tasks = (tasksData as TaskRow[] || []);

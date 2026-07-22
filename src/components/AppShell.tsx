@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { LayoutDashboard, FolderOpen, Settings, User, LogOut, ChevronDown } from "lucide-react";
+import { LayoutDashboard, LogOut, ChevronDown } from "lucide-react";
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -27,9 +27,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   const links = [
     { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-    { href: "/projects", label: "Projects", icon: FolderOpen },
-    { href: "/settings", label: "Settings", icon: Settings },
-    { href: "/profile", label: "Profile", icon: User },
   ];
 
   return (

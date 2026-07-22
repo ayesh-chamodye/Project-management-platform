@@ -1,13 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowRight, BarChart3, Users, FolderOpen } from "lucide-react";
 
 export default function Home() {
   const router = useRouter();
-  const [user, setUser] = useState<{ email?: string } | null>(null);
 
   useEffect(() => {
     const hash = window.location.hash;
@@ -29,20 +28,12 @@ export default function Home() {
     }
 
     (async () => {
-      let user = null;
       try {
         const res = await fetch("/api/auth/check", { cache: "no-store" });
         if (res.ok) {
-          const data = await res.json();
-          user = data.user;
+          window.location.href = "/dashboard";
         }
       } catch {}
-      if (user) {
-        router.push("/dashboard");
-        setUser({ email: user.email });
-      } else {
-        setUser(null);
-      }
     })();
   }, [router]);
 

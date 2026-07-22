@@ -1,8 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createSupabaseClient } from "@/lib/supabase/server";
 
-const PROTECTED_PREFIXES = ["/dashboard", "/projects", "/settings", "/profile"];
-const AUTH_PAGES = ["/login", "/register"];
+function parseJwt(token: string) {
+  try {
+    const base64Url = token.split(".")[1];
+    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split("")
+        .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+        .join("")
+    );
+    return JSON.parse(jsonPayload);
+  } catch {
+    return null;
+  }
+}
+
+const PROTECTED_PREFIXES = ["/dashboard"];
 
 function isProtectedPath(pathname: string): boolean {
   return PROTECTED_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
@@ -11,32 +25,33 @@ function isProtectedPath(pathname: string): boolean {
 export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
-  try {
-    const supabase = await createSupabaseClient();
-    const { data: { session } } = await supabase.auth.getSession();
-    const isAuthed = !!session;
-
-    if (isProtectedPath(pathname) && !isAuthed) {
-      const url = request.nextUrl.clone();
-      url.pathname = "/login";
-      return NextResponse.redirect(url);
-    }
-
-    if (AUTH_PAGES.includes(pathname) && isAuthed) {
-      const url = request.nextUrl.clone();
-      url.pathname = "/dashboard";
-      return NextResponse.redirect(url);
-    }
-
-    return NextResponse.next();
-  } catch {
-    if (isProtectedPath(pathname)) {
-      const url = request.nextUrl.clone();
-      url.pathname = "/login";
-      return NextResponse.redirect(url);
-    }
+  if (!isProtectedPath(pathname)) {
     return NextResponse.next();
   }
+
+  const cookieHeader = request.headers.get("cookie") || "";
+  const cookies = Object.fromEntries(
+    cookieHeader.split(";").map((c) => {
+      const [name, ...rest] = c.trim().split("=");
+      return [name, rest.join("=")];
+    })
+  );
+  const accessToken = cookies["sb-access-token"];
+
+  if (!accessToken) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/login";
+    return NextResponse.redirect(url);
+  }
+
+  const payload = parseJwt(accessToken);
+  if (!payload || !payload.exp || Date.now() > payload.exp * 1000) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/login";
+    return NextResponse.redirect(url);
+  }
+
+  return NextResponse.next();
 }
 
 export const config = {

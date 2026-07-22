@@ -17,8 +17,8 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json({ projects: data || [] });
-  } catch (e: any) {
-    return NextResponse.json({ error: e?.message || "Internal server error" }, { status: 500 });
+  } catch (e) {
+    return NextResponse.json({ error: e instanceof Error ? e.message : "Internal server error" }, { status: 500 });
   }
 }
 
@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({ project: data }, { status: 201 });
-  } catch (e: any) {
-    return NextResponse.json({ error: e?.message || "Internal server error" }, { status: 500 });
+  } catch (e) {
+    return NextResponse.json({ error: e instanceof Error ? e.message : "Internal server error" }, { status: 500 });
   }
 }

@@ -8,7 +8,7 @@ import AppShell from "@/components/AppShell";
 
 export default function ProjectsPage() {
   const router = useRouter();
-  const [projects, setProjects] = useState<any[]>([]);
+  const [projects, setProjects] = useState<Array<{ id: string; name: string; description: string | null; status: string; created_at: string }>>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {

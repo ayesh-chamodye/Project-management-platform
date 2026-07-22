@@ -1,13 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import Link from "next/link";
 import { Mail, Lock, User, Loader2, ArrowLeft } from "lucide-react";
 
 export default function RegisterPage() {
-  const router = useRouter();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -55,7 +53,7 @@ export default function RegisterPage() {
             Back to home
           </Link>
           <h2 className="text-3xl font-bold" style={{ color: "var(--color-foreground)" }}>Create your account</h2>
-          <p className="mt-2 text-sm" style={{ color: "var(--color-muted-foreground)" }}>Start managing your projects</p>
+          <p className="mt-2 text-sm" style={{ color: "var(--color-muted-foreground)" }}>Get started</p>
         </div>
 
         <div className="surface rounded-xl p-8 space-y-6">

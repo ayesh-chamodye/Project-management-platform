@@ -82,7 +82,7 @@ export default function LoginPage() {
             Back to home
           </Link>
           <h2 className="text-3xl font-bold" style={{ color: "var(--color-foreground)" }}>Sign in</h2>
-          <p className="mt-2 text-sm" style={{ color: "var(--color-muted-foreground)" }}>Manage your projects</p>
+          <p className="mt-2 text-sm" style={{ color: "var(--color-muted-foreground)" }}>Manage your account</p>
         </div>
 
         <div className="surface rounded-xl p-8 space-y-6">
@@ -132,7 +132,7 @@ export default function LoginPage() {
           </form>
 
           <p className="text-center text-sm" style={{ color: "var(--color-muted-foreground)" }}>
-            Don't have an account? <Link href="/register" className="font-medium" style={{ color: "var(--color-primary)" }}>Sign up</Link>
+            Don&apos;t have an account? <Link href="/register" className="font-medium" style={{ color: "var(--color-primary)" }}>Sign up</Link>
           </p>
         </div>
       </div>

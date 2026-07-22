@@ -36,7 +36,7 @@ export default function ForgotPasswordPage() {
             Back to login
           </Link>
           <h2 className="text-3xl font-bold" style={{ color: "var(--color-foreground)" }}>Reset password</h2>
-          <p className="mt-2 text-sm" style={{ color: "var(--color-muted-foreground)" }}>We'll send you a reset link</p>
+          <p className="mt-2 text-sm" style={{ color: "var(--color-muted-foreground)" }}>We will send you a reset link</p>
         </div>
 
         <div className="surface rounded-xl p-8 space-y-6">

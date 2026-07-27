@@ -1,42 +1,36 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createSupabaseClient } from "@/lib/supabase/server";
-import { getUserFromRequest } from "@/lib/supabase/server-auth";
+import { auth } from "@/lib/auth";
+import { db } from "@/db/index";
+import { tasks, comments, attachments, columns, boards, projects, workspaceMembers } from "@/db/schema";
+import { eq, and, desc } from "drizzle-orm";
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ workspaceId: string; taskId: string }> }
 ) {
   try {
-    const user = getUserFromRequest(request);
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const session = await auth.api.getSession({ headers: request.headers });
+    if (!session || !db) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const database = db;
 
     const { taskId } = await params;
-    const supabase = await createSupabaseClient();
 
-    const { data: task, error } = await supabase
-      .from("tasks")
-      .select("*, assignee:assignee_id(name, image)")
-      .eq("id", taskId)
-      .single();
+    const [task] = await database.select().from(tasks).where(eq(tasks.id, taskId)).then(r => [r[0]]);
 
-    if (error || !task) return NextResponse.json({ error: "Task not found" }, { status: 404 });
+    if (!task) {
+      return NextResponse.json({ error: "Task not found" }, { status: 404 });
+    }
 
-    const { data: comments } = await supabase
-      .from("comments")
-      .select("*, author:author_id(name, image)")
-      .eq("task_id", taskId)
-      .is("parent_id", null)
-      .order("created_at", { ascending: false });
+    const taskComments = await database.select().from(comments).where(eq(comments.taskId, taskId)).orderBy(desc(comments.createdAt));
+    const taskAttachments = await database.select().from(attachments).where(eq(attachments.taskId, taskId)).orderBy(desc(attachments.createdAt));
 
-    const { data: attachments } = await supabase
-      .from("attachments")
-      .select("*")
-      .eq("task_id", taskId)
-      .order("created_at", { ascending: false });
-
-    return NextResponse.json({ task, comments: comments || [], attachments: attachments || [] });
-  } catch (e) {
-    return NextResponse.json({ error: e instanceof Error ? e.message : "Internal server error" }, { status: 500 });
+    return NextResponse.json({ task, comments: taskComments, attachments: taskAttachments });
+  } catch (error) {
+    console.error("Get task error:", error);
+    return NextResponse.json({ error: "Failed to fetch task" }, { status: 500 });
   }
 }
 
@@ -45,37 +39,40 @@ export async function PATCH(
   { params }: { params: Promise<{ workspaceId: string; taskId: string }> }
 ) {
   try {
-    const user = getUserFromRequest(request);
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const session = await auth.api.getSession({ headers: request.headers });
+    if (!session || !db) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const database = db;
 
     const { taskId } = await params;
     const body = await request.json();
-    const supabase = await createSupabaseClient();
 
-    const updates: Record<string, unknown> = {};
+    const [task] = await database.select().from(tasks).where(eq(tasks.id, taskId)).then(r => [r[0]]);
+
+    if (!task) {
+      return NextResponse.json({ error: "Task not found" }, { status: 404 });
+    }
+
+    const updates: any = {};
     if (body.title !== undefined) updates.title = body.title;
     if (body.description !== undefined) updates.description = body.description;
     if (body.priority !== undefined) updates.priority = body.priority;
     if (body.status !== undefined) updates.status = body.status;
-    if (body.column_id !== undefined) updates.column_id = body.column_id;
-    if (body.assignee_id !== undefined) updates.assignee_id = body.assignee_id;
+    if (body.column_id !== undefined) updates.columnId = body.column_id;
+    if (body.assignee_id !== undefined) updates.assigneeId = body.assignee_id;
     if (body.position !== undefined) updates.position = body.position;
-    if (body.due_date !== undefined) updates.due_date = body.due_date;
+    if (body.due_date !== undefined) updates.dueDate = body.due_date ? new Date(body.due_date) : null;
 
-    updates.updated_at = new Date().toISOString();
+    updates.updatedAt = new Date();
 
-    const { data: task, error } = await supabase
-      .from("tasks")
-      .update(updates)
-      .eq("id", taskId)
-      .select()
-      .single();
+    const [updated] = await database.update(tasks).set(updates).where(eq(tasks.id, taskId)).returning();
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-
-    return NextResponse.json({ task });
-  } catch (e) {
-    return NextResponse.json({ error: e instanceof Error ? e.message : "Internal server error" }, { status: 500 });
+    return NextResponse.json({ task: updated });
+  } catch (error: any) {
+    console.error("Update task error:", error);
+    return NextResponse.json({ error: error.message || "Failed to update task" }, { status: 500 });
   }
 }
 
@@ -84,18 +81,20 @@ export async function DELETE(
   { params }: { params: Promise<{ workspaceId: string; taskId: string }> }
 ) {
   try {
-    const user = getUserFromRequest(request);
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const session = await auth.api.getSession({ headers: request.headers });
+    if (!session || !db) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const database = db;
 
     const { taskId } = await params;
-    const supabase = await createSupabaseClient();
 
-    const { error } = await supabase.from("tasks").delete().eq("id", taskId);
-
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    await database.delete(tasks).where(eq(tasks.id, taskId));
 
     return NextResponse.json({ success: true });
-  } catch (e) {
-    return NextResponse.json({ error: e instanceof Error ? e.message : "Internal server error" }, { status: 500 });
+  } catch (error: any) {
+    console.error("Delete task error:", error);
+    return NextResponse.json({ error: error.message || "Failed to delete task" }, { status: 500 });
   }
 }

@@ -1,29 +1,29 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createSupabaseClient } from "@/lib/supabase/server";
-import { getUserFromRequest } from "@/lib/supabase/server-auth";
+import { auth } from "@/lib/auth";
+import { db } from "@/db/index";
+import { attachments } from "@/db/schema";
+import { eq, desc } from "drizzle-orm";
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ workspaceId: string; taskId: string }> }
 ) {
   try {
-    const user = getUserFromRequest(request);
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const session = await auth.api.getSession({ headers: request.headers });
+    if (!session || !db) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const database = db;
 
     const { taskId } = await params;
-    const supabase = await createSupabaseClient();
 
-    const { data: attachments, error } = await supabase
-      .from("attachments")
-      .select("*")
-      .eq("task_id", taskId)
-      .order("created_at", { ascending: false });
+    const taskAttachments = await database.select().from(attachments).where(eq(attachments.taskId, taskId)).orderBy(desc(attachments.createdAt));
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-
-    return NextResponse.json({ attachments: attachments || [] });
-  } catch (e) {
-    return NextResponse.json({ error: e instanceof Error ? e.message : "Internal server error" }, { status: 500 });
+    return NextResponse.json({ attachments: taskAttachments });
+  } catch (error) {
+    console.error("Get attachments error:", error);
+    return NextResponse.json({ error: "Failed to fetch attachments" }, { status: 500 });
   }
 }
 
@@ -32,23 +32,21 @@ export async function POST(
   { params }: { params: Promise<{ workspaceId: string; taskId: string }> }
 ) {
   try {
-    const user = getUserFromRequest(request);
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const session = await auth.api.getSession({ headers: request.headers });
+    if (!session || !db) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const database = db;
 
     const { taskId } = await params;
     const { name, url, fileType, fileSize } = await request.json();
-    const supabase = await createSupabaseClient();
 
-    const { data: attachment, error } = await supabase
-      .from("attachments")
-      .insert({ task_id: taskId, name, url, file_type: fileType || null, file_size: fileSize || null, uploaded_by_id: user.id })
-      .select()
-      .single();
-
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    const [attachment] = await database.insert(attachments).values({ name: name.trim(), url, fileType: fileType || null, fileSize: fileSize || null, taskId, uploadedById: session.user.id }).returning();
 
     return NextResponse.json({ attachment }, { status: 201 });
-  } catch (e) {
-    return NextResponse.json({ error: e instanceof Error ? e.message : "Internal server error" }, { status: 500 });
+  } catch (error: any) {
+    console.error("Create attachment error:", error);
+    return NextResponse.json({ error: error.message || "Failed to create attachment" }, { status: 500 });
   }
 }

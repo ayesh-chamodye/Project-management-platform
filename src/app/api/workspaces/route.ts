@@ -1,66 +1,65 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createSupabaseClient } from "@/lib/supabase/server";
-import { getUserFromRequest } from "@/lib/supabase/server-auth";
+import { auth } from "@/lib/auth";
+import { db } from "@/db/index";
+import { workspaces, workspaceMembers, projects } from "@/db/schema";
+import { eq, and, desc, sql } from "drizzle-orm";
 
 export async function GET(request: NextRequest) {
   try {
-    const user = getUserFromRequest(request);
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const session = await auth.api.getSession({ headers: request.headers });
+    if (!session || !db) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
-    const supabase = await createSupabaseClient();
-    const { data: members, error } = await supabase
-      .from("workspace_members")
-      .select("*, workspaces(name, slug)")
-      .eq("user_id", user.id)
-      .order("joined_at", { ascending: false });
+    const database = db;
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    const userWorkspaces = await database.select().from(workspaces).where(eq(workspaces.ownerId, session.user.id)).orderBy(desc(workspaces.createdAt));
 
-    const workspaces = members.map((m: { workspace_id: string; workspaces?: { name?: string; slug?: string }; role: string }) => ({
-      id: m.workspace_id,
-      name: m.workspaces?.name || "Untitled",
-      slug: m.workspaces?.slug || "",
-      role: m.role,
-      isOwner: m.role === "owner",
-    }));
+    const result = await Promise.all(
+      userWorkspaces.map(async (ws) => {
+        const [member] = await database.select().from(workspaceMembers).where(and(eq(workspaceMembers.workspaceId, ws.id), eq(workspaceMembers.userId, session.user.id))).then(r => [r[0]]);
+        const [projectCount] = await database.select({ count: sql<number>`count(*)` }).from(projects).where(eq(projects.workspaceId, ws.id)).then(r => [r[0]?.count || 0]);
+        return {
+          id: ws.id,
+          name: ws.name,
+          slug: ws.slug,
+          role: member?.role || "member",
+          isOwner: ws.ownerId === session.user.id,
+          projectCount,
+        };
+      })
+    );
 
-    return NextResponse.json({ workspaces });
-  } catch (e) {
-    return NextResponse.json({ error: e instanceof Error ? e.message : "Internal server error" }, { status: 500 });
+    return NextResponse.json({ workspaces: result });
+  } catch (error) {
+    console.error("Get workspaces error:", error);
+    return NextResponse.json({ error: "Failed to fetch workspaces" }, { status: 500 });
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const user = getUserFromRequest(request);
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-    const { name } = await request.json();
-    if (!name) return NextResponse.json({ error: "Name is required" }, { status: 400 });
-
-    const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
-    const supabase = await createSupabaseClient();
-
-    const { data: workspace, error } = await supabase
-      .from("workspaces")
-      .insert({ name, slug, owner_id: user.id })
-      .select()
-      .single();
-
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-
-    const { error: memberError } = await supabase.from("workspace_members").insert({
-      workspace_id: workspace.id,
-      user_id: user.id,
-      role: "owner",
-    });
-
-    if (memberError) {
-      return NextResponse.json({ error: memberError.message }, { status: 500 });
+    const session = await auth.api.getSession({ headers: request.headers });
+    if (!session || !db) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const database = db;
+
+    const { name } = await request.json();
+    if (!name?.trim()) {
+      return NextResponse.json({ error: "Name is required" }, { status: 400 });
+    }
+
+    const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+
+    const [workspace] = await database.insert(workspaces).values({ name: name.trim(), slug, ownerId: session.user.id }).returning();
+
+    await database.insert(workspaceMembers).values({ workspaceId: workspace.id, userId: session.user.id, role: "owner" });
+
     return NextResponse.json({ workspace }, { status: 201 });
-  } catch (e) {
-    return NextResponse.json({ error: e instanceof Error ? e.message : "Internal server error" }, { status: 500 });
+  } catch (error: any) {
+    console.error("Create workspace error:", error);
+    return NextResponse.json({ error: error.message || "Failed to create workspace" }, { status: 500 });
   }
 }

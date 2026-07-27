@@ -1,28 +1,37 @@
-import { cookies } from "next/headers";
-import { createSupabaseClient } from "@/lib/supabase/server";
-import { getUserFromRequest } from "@/lib/supabase/server-auth";
+import { betterAuth } from "better-auth";
+import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { db } from "@/db/index";
+import * as schema from "@/db/schema";
 
-export async function getServerUser() {
-  const cookieStore = await cookies();
-  const requestLike = {
-    headers: {
-      get: (name: string) => {
-        const cookieHeader = cookieStore.toString();
-        if (name.toLowerCase() === "cookie") return cookieHeader || null;
-        return null;
+const databaseAdapter = process.env.DATABASE_URL && db
+  ? drizzleAdapter(db, {
+      provider: "pg",
+      schema: {
+        user: schema.users,
+        session: schema.sessions,
+        account: schema.accounts,
+        verification: schema.verificationTokens,
       },
-    } as Headers,
-  };
-  const user = getUserFromRequest(requestLike);
+    })
+  : undefined;
 
-  if (!user) return null;
+export const auth = betterAuth({
+  ...(databaseAdapter ? { database: databaseAdapter } : {}),
+  emailAndPassword: {
+    enabled: true,
+    autoSignIn: true,
+  },
+  socialProviders: {
+    google: {
+      clientId: process.env.GOOGLE_CLIENT_ID || "",
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
+    },
+  },
+  session: {
+    expiresIn: 60 * 60 * 24 * 7,
+    updateAge: 60 * 60 * 24,
+  },
+});
 
-  const supabase = await createSupabaseClient();
-  const { data: profile } = await supabase
-    .from("users")
-    .select("*")
-    .eq("id", user.id)
-    .single();
-
-  return { ...user, profile };
-}
+export type Session = typeof auth.$Infer.Session;
+export type User = typeof auth.$Infer.Session.user;

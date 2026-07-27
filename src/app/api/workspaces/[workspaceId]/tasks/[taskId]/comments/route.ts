@@ -1,29 +1,29 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createSupabaseClient } from "@/lib/supabase/server";
-import { getUserFromRequest } from "@/lib/supabase/server-auth";
+import { auth } from "@/lib/auth";
+import { db } from "@/db/index";
+import { comments } from "@/db/schema";
+import { eq, desc } from "drizzle-orm";
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ workspaceId: string; taskId: string }> }
 ) {
   try {
-    const user = getUserFromRequest(request);
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const session = await auth.api.getSession({ headers: request.headers });
+    if (!session || !db) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const database = db;
 
     const { taskId } = await params;
-    const supabase = await createSupabaseClient();
 
-    const { data: comments, error } = await supabase
-      .from("comments")
-      .select("*, author:author_id(name, image)")
-      .eq("task_id", taskId)
-      .order("created_at", { ascending: false });
+    const taskComments = await database.select().from(comments).where(eq(comments.taskId, taskId)).orderBy(desc(comments.createdAt));
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-
-    return NextResponse.json({ comments: comments || [] });
-  } catch (e) {
-    return NextResponse.json({ error: e instanceof Error ? e.message : "Internal server error" }, { status: 500 });
+    return NextResponse.json({ comments: taskComments });
+  } catch (error) {
+    console.error("Get comments error:", error);
+    return NextResponse.json({ error: "Failed to fetch comments" }, { status: 500 });
   }
 }
 
@@ -32,23 +32,21 @@ export async function POST(
   { params }: { params: Promise<{ workspaceId: string; taskId: string }> }
 ) {
   try {
-    const user = getUserFromRequest(request);
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const session = await auth.api.getSession({ headers: request.headers });
+    if (!session || !db) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const database = db;
 
     const { taskId } = await params;
-    const { content } = await request.json();
-    const supabase = await createSupabaseClient();
+    const { content, parentId } = await request.json();
 
-    const { data: comment, error } = await supabase
-      .from("comments")
-      .insert({ content, task_id: taskId, author_id: user.id })
-      .select()
-      .single();
-
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    const [comment] = await database.insert(comments).values({ content: content.trim(), taskId, authorId: session.user.id, parentId: parentId || null }).returning();
 
     return NextResponse.json({ comment }, { status: 201 });
-  } catch (e) {
-    return NextResponse.json({ error: e instanceof Error ? e.message : "Internal server error" }, { status: 500 });
+  } catch (error: any) {
+    console.error("Create comment error:", error);
+    return NextResponse.json({ error: error.message || "Failed to create comment" }, { status: 500 });
   }
 }

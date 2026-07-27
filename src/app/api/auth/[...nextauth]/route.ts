@@ -1,13 +1,25 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/lib/auth";
 
-export async function GET() {
-  return NextResponse.json({ ok: true });
-}
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const email = body?.email;
+    const password = body?.password;
+    const name = body?.name;
 
-export async function POST() {
-  return NextResponse.json({ ok: true });
-}
+    if (!email || !password) {
+      return NextResponse.json({ error: "Email and password are required" }, { status: 400 });
+    }
 
-export async function DELETE() {
-  return NextResponse.json({ ok: true });
+    const result = await auth.api.signUpEmail({ body: { email, password, name } });
+
+    if (result.user) {
+      return NextResponse.json({ success: true, user: result.user });
+    }
+
+    return NextResponse.json({ error: "Signup failed" }, { status: 400 });
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message || "Signup failed" }, { status: 400 });
+  }
 }

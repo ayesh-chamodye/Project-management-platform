@@ -1,89 +1,90 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createSupabaseClient } from "@/lib/supabase/server";
-import { getUserFromRequest } from "@/lib/supabase/server-auth";
+import { auth } from "@/lib/auth";
+import { db } from "@/db/index";
+import { projects } from "@/db/schema";
+import { eq, desc } from "drizzle-orm";
+
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ projectId: string }> }
+) {
+  try {
+    const session = await auth.api.getSession({ headers: request.headers });
+    if (!session || !db) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const database = db;
+
+    const { projectId } = await params;
+
+    const [project] = await database.select().from(projects).where(eq(projects.id, projectId)).then(r => [r[0]]);
+
+    if (!project) {
+      return NextResponse.json({ error: "Project not found" }, { status: 404 });
+    }
+
+    return NextResponse.json({ project });
+  } catch (error) {
+    console.error("Get project error:", error);
+    return NextResponse.json({ error: "Failed to fetch project" }, { status: 500 });
+  }
+}
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: Promise<{ workspaceId: string; projectId: string }> }
+  { params }: { params: Promise<{ projectId: string }> }
 ) {
   try {
-    const user = getUserFromRequest(request);
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-    const { workspaceId, projectId } = await params;
-    const supabase = await createSupabaseClient();
-
-    const { data: member } = await supabase
-      .from("workspace_members")
-      .select("role")
-      .eq("workspace_id", workspaceId)
-      .eq("user_id", user.id)
-      .single();
-
-    if (!member || !["owner", "admin"].includes(member.role)) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    const session = await auth.api.getSession({ headers: request.headers });
+    if (!session || !db) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const body = await request.json();
-    const updates: Record<string, unknown> = {};
-    if (body.name !== undefined) updates.name = body.name;
-    if (body.description !== undefined) updates.description = body.description;
-    if (body.color !== undefined) updates.color = body.color;
+    const database = db;
 
-    if (Object.keys(updates).length === 0) {
-      return NextResponse.json({ error: "No valid fields to update" }, { status: 400 });
+    const { projectId } = await params;
+    const { name, description, color } = await request.json();
+
+    const [project] = await database.select().from(projects).where(eq(projects.id, projectId)).then(r => [r[0]]);
+
+    if (!project) {
+      return NextResponse.json({ error: "Project not found" }, { status: 404 });
     }
 
-    updates.updated_at = new Date().toISOString();
+    const updates: any = {};
+    if (name !== undefined) updates.name = name;
+    if (description !== undefined) updates.description = description;
+    if (color !== undefined) updates.color = color;
 
-    const { data: project, error } = await supabase
-      .from("projects")
-      .update(updates)
-      .eq("id", projectId)
-      .eq("workspace_id", workspaceId)
-      .select()
-      .single();
+    const [updated] = await database.update(projects).set(updates).where(eq(projects.id, projectId)).returning();
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-
-    return NextResponse.json({ project });
-  } catch (e) {
-    return NextResponse.json({ error: e instanceof Error ? e.message : "Internal server error" }, { status: 500 });
+    return NextResponse.json({ project: updated });
+  } catch (error: any) {
+    console.error("Update project error:", error);
+    return NextResponse.json({ error: error.message || "Failed to update project" }, { status: 500 });
   }
 }
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ workspaceId: string; projectId: string }> }
+  { params }: { params: Promise<{ projectId: string }> }
 ) {
   try {
-    const user = getUserFromRequest(request);
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-    const { workspaceId, projectId } = await params;
-    const supabase = await createSupabaseClient();
-
-    const { data: member } = await supabase
-      .from("workspace_members")
-      .select("role")
-      .eq("workspace_id", workspaceId)
-      .eq("user_id", user.id)
-      .single();
-
-    if (!member || !["owner", "admin"].includes(member.role)) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    const session = await auth.api.getSession({ headers: request.headers });
+    if (!session || !db) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { error } = await supabase
-      .from("projects")
-      .delete()
-      .eq("id", projectId)
-      .eq("workspace_id", workspaceId);
+    const database = db;
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    const { projectId } = await params;
+
+    await database.delete(projects).where(eq(projects.id, projectId));
 
     return NextResponse.json({ success: true });
-  } catch (e) {
-    return NextResponse.json({ error: e instanceof Error ? e.message : "Internal server error" }, { status: 500 });
+  } catch (error: any) {
+    console.error("Delete project error:", error);
+    return NextResponse.json({ error: error.message || "Failed to delete project" }, { status: 500 });
   }
 }

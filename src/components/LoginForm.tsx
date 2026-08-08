@@ -3,10 +3,13 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { signInWithGoogle } from "@/lib/firebase/client";
+import { useAuth } from "@/components/AuthProvider";
 import { Mail, Lock, Loader2, Eye, EyeOff } from "lucide-react";
 
 export function LoginForm() {
   const router = useRouter();
+  const { refresh } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -19,28 +22,29 @@ export function LoginForm() {
     setLoading(true);
 
     try {
-      const res = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
-
-      if (res.ok) {
-        router.push("/dashboard");
-        router.refresh();
-      } else {
-        const body = await res.json().catch(() => ({ error: "Login failed" }));
-        setError(body.error || "Invalid email or password");
-      }
-    } catch {
-      setError("An error occurred. Please try again.");
+      const { signInWithEmailAndPassword } = await import("firebase/auth");
+      const { auth } = await import("@/lib/firebase/config");
+      await signInWithEmailAndPassword(auth, email, password);
+      await refresh();
+      router.push("/dashboard");
+    } catch (err: any) {
+      setError(err?.message?.replace("Firebase: ", "") || "Invalid email or password");
     } finally {
       setLoading(false);
     }
   }
 
   async function handleGoogleSignIn() {
-    window.location.href = "/api/auth/social/google";
+    setLoading(true);
+    setError("");
+    try {
+      await signInWithGoogle();
+      await refresh();
+      router.push("/dashboard");
+    } catch (err: any) {
+      setError(err?.message?.replace("Firebase: ", "") || "Google sign-in failed. Please try again.");
+      setLoading(false);
+    }
   }
 
   return (
@@ -54,7 +58,8 @@ export function LoginForm() {
       <button
         type="button"
         onClick={handleGoogleSignIn}
-        className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg shadow-sm text-sm font-medium transition-colors"
+        disabled={loading}
+        className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg shadow-sm text-sm font-medium transition-colors hover:opacity-80"
         style={{ border: "1px solid var(--color-border)", color: "var(--color-foreground)", backgroundColor: "var(--color-card)" }}
       >
         <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
@@ -72,7 +77,7 @@ export function LoginForm() {
         </div>
         <div className="relative flex justify-center text-sm">
           <span className="px-3 text-xs" style={{ backgroundColor: "var(--color-card)", color: "var(--color-muted-foreground)" }}>
-            Or continue with
+            Or continue with email
           </span>
         </div>
       </div>

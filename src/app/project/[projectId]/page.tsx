@@ -1,97 +1,75 @@
 "use client";
 
-import { useEffect, useState, use } from "react";
+import { useState, useEffect } from "react";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { ArrowLeft, Calendar } from "lucide-react";
-import AppShell from "@/components/AppShell";
+import { ArrowLeft, Plus, Loader2 } from "lucide-react";
+import { useAuth } from "@/components/AuthProvider";
 
-interface Project {
-  id: string;
-  name: string;
-  description: string | null;
-  status: string;
-  created_at: string;
-}
-
-export default function ProjectPage({ params }: { params: Promise<{ projectId: string }> }) {
+export default function ProjectDetailPage() {
+  const params = useParams();
   const router = useRouter();
-  const { projectId } = use(params);
-  const [project, setProject] = useState<Project | null>(null);
+  const { user, loading: authLoading } = useAuth();
+  const [project, setProject] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    (async () => {
-      try {
-        const res = await fetch("/api/auth/check", { cache: "no-store" });
-        if (!res.ok) {
-          router.push("/login");
-          return;
-        }
-        const pr = await fetch(`/api/projects/${projectId}`);
-        if (pr.ok) {
-          const data = await pr.json();
-          setProject(data.project);
-        }
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, [projectId, router]);
+    if (!authLoading && !user) router.push("/login");
+  }, [user, authLoading, router]);
 
-  if (loading) {
+  useEffect(() => {
+    fetchProject();
+  }, [params.projectId]);
+
+  async function fetchProject() {
+    try {
+      const res = await fetch(`/api/projects/${params.projectId}`, { cache: "no-store" });
+      if (res.ok) {
+        const data = await res.json();
+        setProject(data.project);
+      }
+    } catch {}
+    setLoading(false);
+  }
+
+  if (authLoading || loading) {
     return (
-      <AppShell>
-        <div className="flex items-center justify-center h-64">
-          <p style={{ color: "var(--color-muted-foreground)" }}>Loading...</p>
-        </div>
-      </AppShell>
+      <div className="flex items-center justify-center min-h-[50vh]">
+        <Loader2 className="h-8 w-8 animate-spin" style={{ color: "var(--color-primary)" }} />
+      </div>
     );
   }
 
   if (!project) {
     return (
-      <AppShell>
-        <div className="text-center py-20">
-          <p className="text-lg" style={{ color: "var(--color-muted-foreground)" }}>Project not found</p>
-          <Link href="/projects" className="btn-secondary mt-4 inline-flex items-center gap-2">
-            <ArrowLeft className="h-4 w-4" />
-            Back to Projects
-          </Link>
-        </div>
-      </AppShell>
+      <div className="text-center py-16">
+        <p className="text-gray-600">Project not found</p>
+        <Link href="/projects" className="text-indigo-600 hover:underline mt-2 inline-block">Back to projects</Link>
+      </div>
     );
   }
 
   return (
-    <AppShell>
-      <div className="space-y-6">
-        <Link href="/projects" className="inline-flex items-center gap-1 text-sm font-medium hover:opacity-80" style={{ color: "var(--color-primary)" }}>
-          <ArrowLeft className="h-4 w-4" />
-          Back to Projects
+    <div className="space-y-6">
+      <div className="flex items-center gap-4">
+        <Link href="/projects" className="p-2 rounded-lg hover:opacity-80" style={{ color: "var(--color-muted-foreground)" }}>
+          <ArrowLeft className="h-5 w-5" />
         </Link>
+        <div className="flex-1">
+          <h1 className="text-3xl font-bold" style={{ color: "var(--color-foreground)" }}>{project.name}</h1>
+          <p className="mt-1 text-sm" style={{ color: "var(--color-muted-foreground)" }}>{project.description || "No description"}</p>
+        </div>
+        <button className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:opacity-90">
+          <Plus className="h-4 w-4" /> New Board
+        </button>
+      </div>
 
-        <div className="surface rounded-xl p-8 space-y-6" style={{ border: "1px solid var(--color-border)" }}>
-          <div>
-            <h1 className="text-3xl font-bold" style={{ color: "var(--color-foreground)" }}>{project.name}</h1>
-            <span className="inline-block mt-2 text-xs px-2 py-1 rounded-full" style={{ backgroundColor: "var(--color-muted)", color: "var(--color-muted-foreground)" }}>
-              {project.status}
-            </span>
-          </div>
-
-          {project.description && (
-            <div>
-              <h2 className="label">Description</h2>
-              <p className="text-sm mt-1" style={{ color: "var(--color-foreground)" }}>{project.description}</p>
-            </div>
-          )}
-
-          <div className="flex items-center gap-2 text-sm" style={{ color: "var(--color-muted-foreground)" }}>
-            <Calendar className="h-4 w-4" />
-            Created {new Date(project.created_at).toLocaleDateString()}
-          </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="surface rounded-xl p-6 text-center" style={{ border: "1px solid var(--color-border)" }}>
+          <p className="text-sm" style={{ color: "var(--color-muted-foreground)" }}>No boards yet</p>
+          <p className="text-xs mt-1" style={{ color: "var(--color-muted-foreground)" }}>Create a board to start organizing tasks</p>
         </div>
       </div>
-    </AppShell>
+    </div>
   );
 }

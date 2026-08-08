@@ -3,10 +3,10 @@
 import { type ReactNode, createContext, useContext, useState, useEffect } from "react";
 
 interface User {
-  id: string;
-  email: string;
-  name?: string;
-  image?: string;
+  uid: string;
+  email: string | null;
+  displayName: string | null;
+  photoURL: string | null;
 }
 
 interface AuthContextType {

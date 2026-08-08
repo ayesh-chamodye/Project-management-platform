@@ -1,22 +1,6 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import {
-  DndContext,
-  DragEndEvent,
-  DragOverEvent,
-  DragStartEvent,
-  PointerSensor,
-  KeyboardSensor,
-  useSensor,
-  useSensors,
-  closestCorners,
-} from "@dnd-kit/core";
-import {
-  SortableContext,
-  verticalListSortingStrategy,
-  sortableKeyboardCoordinates,
-} from "@dnd-kit/sortable";
 import { Plus, MoreVertical, Calendar, User } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
@@ -24,10 +8,8 @@ interface Column {
   id: string;
   name: string;
   color?: string;
-  position: number;
+  position: string;
   boardId: string;
-  createdAt: string;
-  updatedAt: string;
 }
 
 interface Task {
@@ -36,13 +18,10 @@ interface Task {
   description?: string;
   priority: string;
   status: string;
-  position: number;
+  position: string;
   dueDate?: string;
   assigneeId?: string;
   columnId: string;
-  createdById: string;
-  createdAt: string;
-  updatedAt: string;
 }
 
 interface KanbanBoardProps {
@@ -55,17 +34,6 @@ export function KanbanBoard({ workspaceId, projectId, boardId }: KanbanBoardProp
   const [columns, setColumns] = useState<Column[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
-
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8,
-      },
-    }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
-  );
 
   const fetchBoardData = useCallback(async () => {
     try {
@@ -85,51 +53,6 @@ export function KanbanBoard({ workspaceId, projectId, boardId }: KanbanBoardProp
   useEffect(() => {
     fetchBoardData();
   }, [fetchBoardData]);
-
-  function handleDragStart(_event: DragStartEvent) {
-  }
-
-  function handleDragOver(_event: DragOverEvent) {
-  }
-
-  async function handleDragEnd(event: DragEndEvent) {
-    const { active, over } = event;
-
-    if (!over || !active) return;
-
-    const activeId = active.id as string;
-    const overId = over.id as string;
-
-    const activeTask = tasks.find((t) => t.id === activeId);
-    if (!activeTask) return;
-
-    const overColumn = columns.find((c) => c.id === overId);
-    const overTask = tasks.find((t) => t.id === overId);
-
-    let newColumnId = activeTask.columnId;
-    let newPosition = activeTask.position;
-
-    if (overColumn) {
-      newColumnId = overColumn.id;
-    } else if (overTask) {
-      newColumnId = overTask.columnId;
-    }
-
-    try {
-      await fetch(`/api/workspaces/${workspaceId}/tasks/${activeId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          column_id: newColumnId,
-          position: newPosition,
-        }),
-      });
-
-      await fetchBoardData();
-    } catch (error) {
-      console.error("Failed to update task:", error);
-    }
-  }
 
   function getTasksForColumn(columnId: string) {
     return tasks.filter((t) => t.columnId === columnId);
@@ -157,60 +80,50 @@ export function KanbanBoard({ workspaceId, projectId, boardId }: KanbanBoardProp
   }
 
   return (
-    <DndContext
-      sensors={sensors}
-      collisionDetection={closestCorners}
-      onDragStart={handleDragStart}
-      onDragOver={handleDragOver}
-      onDragEnd={handleDragEnd}
-    >
-      <div className="flex gap-6 overflow-x-auto pb-6">
-        {columns.map((column) => {
-          const columnTasks = getTasksForColumn(column.id);
+    <div className="flex gap-6 overflow-x-auto pb-6">
+      {columns.map((column) => {
+        const columnTasks = getTasksForColumn(column.id);
 
-          return (
-            <div
-              key={column.id}
-              className="flex-shrink-0 w-80 surface rounded-xl p-4"
-              style={{ border: "1px solid var(--color-border)" }}
-            >
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h3 className="font-semibold" style={{ color: "var(--color-foreground)" }}>
-                    {column.name}
-                  </h3>
-                  <p className="text-xs mt-1" style={{ color: "var(--color-muted-foreground)" }}>
-                    {columnTasks.length} {columnTasks.length === 1 ? "task" : "tasks"}
-                  </p>
-                </div>
-                <button
-                  className="p-1 rounded hover:opacity-80"
-                  style={{ color: "var(--color-muted-foreground)" }}
-                >
-                  <MoreVertical className="h-4 w-4" />
-                </button>
+        return (
+          <div
+            key={column.id}
+            className="flex-shrink-0 w-80 surface rounded-xl p-4"
+            style={{ border: "1px solid var(--color-border)" }}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="font-semibold" style={{ color: "var(--color-foreground)" }}>
+                  {column.name}
+                </h3>
+                <p className="text-xs mt-1" style={{ color: "var(--color-muted-foreground)" }}>
+                  {columnTasks.length} {columnTasks.length === 1 ? "task" : "tasks"}
+                </p>
               </div>
-
-              <SortableContext items={columnTasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
-                <div className="space-y-3">
-                  {columnTasks.map((task) => (
-                    <TaskCard key={task.id} task={task} getPriorityColor={getPriorityColor} />
-                  ))}
-                </div>
-              </SortableContext>
-
               <button
-                className="w-full mt-3 py-2 rounded-lg border-2 border-dashed flex items-center justify-center gap-2 text-sm hover:opacity-80 transition-colors"
-                style={{ borderColor: "var(--color-border)", color: "var(--color-muted-foreground)" }}
+                className="p-1 rounded hover:opacity-80"
+                style={{ color: "var(--color-muted-foreground)" }}
               >
-                <Plus className="h-4 w-4" />
-                Add task
+                <MoreVertical className="h-4 w-4" />
               </button>
             </div>
-          );
-        })}
-      </div>
-    </DndContext>
+
+            <div className="space-y-3">
+              {columnTasks.map((task) => (
+                <TaskCard key={task.id} task={task} getPriorityColor={getPriorityColor} />
+              ))}
+            </div>
+
+            <button
+              className="w-full mt-3 py-2 rounded-lg border-2 border-dashed flex items-center justify-center gap-2 text-sm hover:opacity-80 transition-colors"
+              style={{ borderColor: "var(--color-border)", color: "var(--color-muted-foreground)" }}
+            >
+              <Plus className="h-4 w-4" />
+              Add task
+            </button>
+          </div>
+        );
+      })}
+    </div>
   );
 }
 

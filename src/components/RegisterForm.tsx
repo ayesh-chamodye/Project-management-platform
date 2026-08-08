@@ -3,10 +3,13 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Mail, Lock, User, Loader2, Eye, EyeOff } from "lucide-react";
+import { signInWithGoogle } from "@/lib/firebase/client";
+import { useAuth } from "@/components/AuthProvider";
+import { User, Loader2, Mail, Lock, Eye, EyeOff } from "lucide-react";
 
 export function RegisterForm() {
   const router = useRouter();
+  const { refresh } = useAuth();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -14,34 +17,35 @@ export function RegisterForm() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
+  async function handleGoogleSignIn() {
+    setLoading(true);
+    setError("");
+    try {
+      await signInWithGoogle();
+      await refresh();
+      router.push("/dashboard");
+    } catch (err: any) {
+      setError(err?.message?.replace("Firebase: ", "") || "Google sign-in failed. Please try again.");
+      setLoading(false);
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
     setLoading(true);
 
     try {
-      const res = await fetch("/api/auth/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, password }),
-      });
-
-      if (res.ok) {
-        router.push("/dashboard");
-        router.refresh();
-      } else {
-        const body = await res.json().catch(() => ({ error: "Registration failed" }));
-        setError(body.error || "Registration failed");
-      }
-    } catch {
-      setError("An error occurred. Please try again.");
-    } finally {
+      const { auth } = await import("@/lib/firebase/config");
+      const { createUserWithEmailAndPassword } = await import("firebase/auth");
+      const cred = await createUserWithEmailAndPassword(auth, email, password);
+      await (cred.user as any).updateProfile({ displayName: name });
+      await refresh();
+      router.push("/dashboard");
+    } catch (err: any) {
+      setError(err?.message?.replace("Firebase: ", "") || "Registration failed. Please try again.");
       setLoading(false);
     }
-  }
-
-  async function handleGoogleSignIn() {
-    window.location.href = "/api/auth/social/google";
   }
 
   return (
@@ -55,7 +59,8 @@ export function RegisterForm() {
       <button
         type="button"
         onClick={handleGoogleSignIn}
-        className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg shadow-sm text-sm font-medium transition-colors"
+        disabled={loading}
+        className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg shadow-sm text-sm font-medium transition-colors hover:opacity-80"
         style={{ border: "1px solid var(--color-border)", color: "var(--color-foreground)", backgroundColor: "var(--color-card)" }}
       >
         <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
@@ -64,7 +69,7 @@ export function RegisterForm() {
           <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
           <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
         </svg>
-        Sign up with Google
+        Continue with Google
       </button>
 
       <div className="relative">
@@ -73,7 +78,7 @@ export function RegisterForm() {
         </div>
         <div className="relative flex justify-center text-sm">
           <span className="px-3 text-xs" style={{ backgroundColor: "var(--color-card)", color: "var(--color-muted-foreground)" }}>
-            Or continue with
+            Or sign up with email
           </span>
         </div>
       </div>
@@ -122,7 +127,8 @@ export function RegisterForm() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="input-field pl-10 pr-10"
-              placeholder="••••••••"
+              placeholder="Min. 6 characters"
+              minLength={6}
             />
             <button
               type="button"

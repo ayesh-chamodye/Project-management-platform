@@ -1,51 +1,49 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createSupabaseClient } from "@/lib/supabase/server";
-import { getUserFromRequest } from "@/lib/supabase/server-auth";
+import { adminAuth } from "@/lib/firebase/admin";
+import { cookies } from "next/headers";
+import { adminDb } from "@/lib/firebase/admin";
 
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ workspaceId: string; columnId: string }> }
-) {
+export async function PUT(request: NextRequest, { params }: { params: { workspaceId: string; columnId: string } }) {
   try {
-    const user = getUserFromRequest(request);
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const sessionCookie = (await cookies()).get("session")?.value;
+    if (!sessionCookie) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
-    const { columnId } = await params;
-    const { name, color, position } = await request.json();
-    const supabase = await createSupabaseClient();
+    await adminAuth.verifySessionCookie(sessionCookie, true);
+    const body = await request.json();
+    const boardId = request.nextUrl.searchParams.get("boardId");
 
-    const { data: column, error } = await supabase
-      .from("columns")
-      .update({ name: name || undefined, color: color !== undefined ? color : undefined, position: position !== undefined ? position : undefined, updated_at: new Date().toISOString() })
-      .eq("id", columnId)
-      .select()
-      .single();
+    if (!boardId) {
+      return NextResponse.json({ error: "boardId is required" }, { status: 400 });
+    }
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    await adminDb.collection("boards").doc(boardId).collection("columns").doc(params.columnId).set(body, { merge: true });
 
-    return NextResponse.json({ column });
-  } catch (e) {
-    return NextResponse.json({ error: e instanceof Error ? e.message : "Internal server error" }, { status: 500 });
+    return NextResponse.json({ success: true });
+  } catch {
+    return NextResponse.json({ error: "Failed to update column" }, { status: 500 });
   }
 }
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ workspaceId: string; columnId: string }> }
-) {
+export async function DELETE(request: NextRequest, { params }: { params: { workspaceId: string; columnId: string } }) {
   try {
-    const user = getUserFromRequest(request);
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const sessionCookie = (await cookies()).get("session")?.value;
+    if (!sessionCookie) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
-    const { columnId } = await params;
-    const supabase = await createSupabaseClient();
+    await adminAuth.verifySessionCookie(sessionCookie, true);
+    const boardId = request.nextUrl.searchParams.get("boardId");
 
-    const { error } = await supabase.from("columns").delete().eq("id", columnId);
+    if (!boardId) {
+      return NextResponse.json({ error: "boardId is required" }, { status: 400 });
+    }
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    await adminDb.collection("boards").doc(boardId).collection("columns").doc(params.columnId).delete();
 
     return NextResponse.json({ success: true });
-  } catch (e) {
-    return NextResponse.json({ error: e instanceof Error ? e.message : "Internal server error" }, { status: 500 });
+  } catch {
+    return NextResponse.json({ error: "Failed to delete column" }, { status: 500 });
   }
 }

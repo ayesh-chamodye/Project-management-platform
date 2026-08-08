@@ -1,59 +1,42 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createSupabaseClient } from "@/lib/supabase/server";
-import { getUserFromRequest } from "@/lib/supabase/server-auth";
+import { adminAuth } from "@/lib/firebase/admin";
+import { cookies } from "next/headers";
+import { getProject, createProject } from "@/lib/firestore";
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
-    const user = getUserFromRequest(request);
-    if (!user) {
+    const sessionCookie = (await cookies()).get("session")?.value;
+    if (!sessionCookie) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const supabase = await createSupabaseClient();
-    const { data, error } = await supabase.from("projects").select("*").order("created_at", { ascending: false });
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
-
-    return NextResponse.json({ projects: data || [] });
-  } catch (e) {
-    return NextResponse.json({ error: e instanceof Error ? e.message : "Internal server error" }, { status: 500 });
+    await adminAuth.verifySessionCookie(sessionCookie, true);
+    return NextResponse.json({ projects: [] });
+  } catch {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const user = getUserFromRequest(request);
-    if (!user) {
+    const sessionCookie = (await cookies()).get("session")?.value;
+    if (!sessionCookie) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const decoded = await adminAuth.verifySessionCookie(sessionCookie, true);
     const body = await request.json();
-    const { name, description, status } = body;
 
-    if (!name) {
-      return NextResponse.json({ error: "name is required" }, { status: 400 });
-    }
+    const projectId = await createProject({
+      name: body.name,
+      description: body.description,
+      color: body.color || "#6366f1",
+      workspaceId: body.workspaceId,
+      createdById: decoded.uid,
+    });
 
-    const supabase = await createSupabaseClient();
-    const { data, error } = await supabase
-      .from("projects")
-      .insert({
-        name,
-        description: description || null,
-        status: status || "active",
-        created_by_id: user.id,
-      })
-      .select()
-      .single();
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
-
-    return NextResponse.json({ project: data }, { status: 201 });
-  } catch (e) {
-    return NextResponse.json({ error: e instanceof Error ? e.message : "Internal server error" }, { status: 500 });
+    return NextResponse.json({ project: { id: projectId, ...body } });
+  } catch {
+    return NextResponse.json({ error: "Failed to create project" }, { status: 500 });
   }
 }

@@ -12,26 +12,20 @@ import {
   LogOut,
   ChevronDown,
   Bell,
+  Loader2,
 } from "lucide-react";
+import { useAuth } from "@/components/AuthProvider";
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const [user, setUser] = useState<{ name?: string; email?: string; image?: string } | null>(null);
+  const { user, loading: authLoading } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
-
-  useEffect(() => {
-    fetch("/api/auth/check", { cache: "no-store" })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
-        if (data?.user) setUser(data.user);
-      })
-      .catch(() => {});
-  }, []);
 
   async function handleLogout() {
     await fetch("/api/auth/logout", { method: "POST" });
     router.push("/login");
+    router.refresh();
   }
 
   const links = [
@@ -40,6 +34,14 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     { href: "/team", label: "Team", icon: Users },
     { href: "/settings", label: "Settings", icon: Settings },
   ];
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin" style={{ color: "var(--color-primary)" }} />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex" style={{ backgroundColor: "var(--color-background)" }}>
@@ -63,9 +65,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               <Link
                 key={link.href}
                 href={link.href}
-                className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  active ? "" : "hover:opacity-80"
-                }`}
+                className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors`}
                 style={{
                   color: active ? "var(--color-primary-foreground)" : "var(--color-foreground)",
                   backgroundColor: active ? "var(--color-primary)" : "transparent",
@@ -80,16 +80,16 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
         <div className="p-4 border-t" style={{ borderColor: "var(--color-border)" }}>
           <div className="flex items-center gap-3 mb-3">
-            {user?.image ? (
-              <img src={user.image} alt={user.name || ""} className="h-8 w-8 rounded-full" />
+            {user?.photoURL ? (
+              <img src={user.photoURL} alt={user.displayName || ""} className="h-8 w-8 rounded-full" />
             ) : (
               <div className="h-8 w-8 rounded-full bg-indigo-600 flex items-center justify-center text-white text-sm font-medium">
-                {user?.name?.[0] || user?.email?.[0] || "U"}
+                {user?.displayName?.[0] || user?.email?.[0] || "U"}
               </div>
             )}
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium truncate" style={{ color: "var(--color-foreground)" }}>
-                {user?.name || "User"}
+                {user?.displayName || "User"}
               </p>
               <p className="text-xs truncate" style={{ color: "var(--color-muted-foreground)" }}>
                 {user?.email}
@@ -108,7 +108,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           <Link href="/dashboard" className="text-lg font-bold" style={{ color: "var(--color-foreground)" }}>FlowBoard</Link>
           <div className="relative">
             <button onClick={() => setMenuOpen(!menuOpen)} className="flex items-center gap-1 text-sm" style={{ color: "var(--color-foreground)" }}>
-              {user?.name || user?.email || "Menu"}
+              {user?.displayName || user?.email || "Menu"}
               <ChevronDown className="h-4 w-4" />
             </button>
             {menuOpen && (

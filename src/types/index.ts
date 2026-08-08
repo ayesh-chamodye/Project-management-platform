@@ -1,28 +1,29 @@
 export interface User {
-  id: string;
-  email: string;
-  name?: string;
-  image?: string;
+  uid: string;
+  email: string | null;
+  displayName: string | null;
+  photoURL: string | null;
 }
 
 export interface Workspace {
   id: string;
   name: string;
   slug: string;
-  role: string;
-  isOwner: boolean;
-  projectCount?: number;
+  ownerId: string;
+  icon?: string;
+  role?: string;
+  createdAt?: string;
 }
 
 export interface Project {
   id: string;
   name: string;
   description?: string;
-  color: string;
+  color?: string;
   workspaceId: string;
   createdById: string;
-  createdAt: string;
-  updatedAt: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface Board {
@@ -31,39 +32,33 @@ export interface Board {
   description?: string;
   projectId: string;
   createdById: string;
-  createdAt: string;
-  updatedAt: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface Column {
   id: string;
   name: string;
   color?: string;
-  position: number;
+  position: string;
   boardId: string;
-  createdAt: string;
-  updatedAt: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface Task {
   id: string;
   title: string;
   description?: string;
-  priority: "high" | "medium" | "low";
-  status: string;
-  position: number;
+  priority: "low" | "medium" | "high";
+  status?: string;
+  position: string;
   dueDate?: string;
   assigneeId?: string;
   columnId: string;
   createdById: string;
-  createdAt: string;
-  updatedAt: string;
-  assignee?: {
-    id: string;
-    name?: string;
-    email?: string;
-    image?: string;
-  };
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface Comment {
@@ -72,14 +67,8 @@ export interface Comment {
   taskId: string;
   authorId: string;
   parentId?: string;
-  createdAt: string;
-  updatedAt: string;
-  author?: {
-    id: string;
-    name?: string;
-    email?: string;
-    image?: string;
-  };
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface Attachment {
@@ -90,12 +79,7 @@ export interface Attachment {
   fileSize?: string;
   taskId: string;
   uploadedById: string;
-  createdAt: string;
-  uploadedBy?: {
-    id: string;
-    name?: string;
-    email?: string;
-  };
+  createdAt?: string;
 }
 
 export interface Label {
@@ -103,18 +87,7 @@ export interface Label {
   name: string;
   color: string;
   workspaceId: string;
-  createdAt: string;
-}
-
-export interface ActivityLog {
-  id: string;
-  action: string;
-  entityType: string;
-  entityId: string;
-  metadata?: any;
-  userId: string;
-  workspaceId: string;
-  createdAt: string;
+  createdAt?: string;
 }
 
 export interface Notification {
@@ -123,5 +96,5 @@ export interface Notification {
   title: string;
   message: string;
   isRead: boolean;
-  createdAt: string;
+  createdAt?: string;
 }

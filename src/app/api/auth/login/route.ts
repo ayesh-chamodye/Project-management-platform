@@ -1,24 +1,35 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { adminAuth } from "@/lib/firebase/admin";
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const email = body?.email;
-    const password = body?.password;
+    const { idToken } = body;
 
-    if (!email || !password) {
-      return NextResponse.json({ error: "Email and password are required" }, { status: 400 });
+    if (!idToken) {
+      return NextResponse.json({ error: "Missing ID token" }, { status: 400 });
     }
 
-    const result = await auth.api.signInEmail({ body: { email, password } });
+    const decoded = await adminAuth.verifyIdToken(idToken);
 
-    if (result.user) {
-      return NextResponse.json({ success: true, user: result.user });
-    }
+    const expiresIn = 60 * 60 * 24 * 7 * 1000;
+    const sessionCookie = await adminAuth.createSessionCookie(idToken, { expiresIn });
 
+    const response = NextResponse.json({
+      authenticated: true,
+      user: { uid: decoded.uid, email: decoded.email },
+    });
+    response.cookies.set("session", sessionCookie, {
+      maxAge: expiresIn / 1000,
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      path: "/",
+      sameSite: "lax",
+    });
+
+    return response;
+  } catch (error) {
+    console.error("Login error:", error);
     return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message || "Login failed" }, { status: 401 });
   }
 }

@@ -1,50 +1,68 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import AppShell from "@/components/AppShell";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { User, Mail, Shield, Loader2, LogOut } from "lucide-react";
+import { useAuth } from "@/components/AuthProvider";
 
 export default function ProfilePage() {
-  const [email, setEmail] = useState("");
+  const router = useRouter();
+  const { user, loading } = useAuth();
   const [name, setName] = useState("");
-  const [avatarUrl, setAvatarUrl] = useState("");
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    fetch("/api/auth/check", { cache: "no-store" })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
-        if (data?.user) {
-          setEmail(data.user.email);
-          setName(data.user.name || "");
-        }
-      })
-      .catch(() => {});
-  }, []);
+    if (!loading && !user) router.push("/login");
+  }, [user, loading, router]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[50vh]">
+        <Loader2 className="h-8 w-8 animate-spin" style={{ color: "var(--color-primary)" }} />
+      </div>
+    );
+  }
 
   return (
-    <AppShell>
-      <div className="max-w-2xl space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold" style={{ color: "var(--color-foreground)" }}>Profile</h1>
-          <p className="mt-1 text-sm" style={{ color: "var(--color-muted-foreground)" }}>Your account information</p>
+    <div className="max-w-2xl mx-auto space-y-6">
+      <h1 className="text-3xl font-bold" style={{ color: "var(--color-foreground)" }}>Profile</h1>
+
+      <div className="surface rounded-xl p-8" style={{ border: "1px solid var(--color-border)" }}>
+        <div className="flex items-center gap-4 mb-6">
+          <div className="h-16 w-16 rounded-full bg-indigo-600 flex items-center justify-center text-white text-2xl font-bold">
+             {user?.displayName?.[0] || user?.email?.[0] || "U"}
+          </div>
+          <div>
+              <h2 className="text-xl font-semibold" style={{ color: "var(--color-foreground)" }}>{user?.displayName || "User"}</h2>
+            <p className="text-sm" style={{ color: "var(--color-muted-foreground)" }}>{user?.email}</p>
+          </div>
         </div>
-        <form className="surface rounded-xl p-8 space-y-6" style={{ border: "1px solid var(--color-border)" }}>
+
+        <div className="space-y-4">
           <div>
-            <label htmlFor="email" className="label">Email</label>
-            <input id="email" type="email" value={email} readOnly className="input-field opacity-60" />
+            <label className="label">Display Name</label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Your name"
+              className="w-full px-4 py-2 rounded-lg border"
+              style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-background)", color: "var(--color-foreground)" }}
+            />
           </div>
           <div>
-            <label htmlFor="name" className="label">Name</label>
-            <input id="name" type="text" value={name} onChange={(e) => setName(e.target.value)} className="input-field" placeholder="Your name" />
+            <label className="label">Email</label>
+            <input
+              type="email"
+              value={user?.email || ""}
+              disabled
+              className="w-full px-4 py-2 rounded-lg border opacity-60"
+              style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-background)", color: "var(--color-foreground)" }}
+            />
           </div>
-          <div>
-            <label htmlFor="avatarUrl" className="label">Avatar URL</label>
-            <input id="avatarUrl" type="url" value={avatarUrl} onChange={(e) => setAvatarUrl(e.target.value)} className="input-field" placeholder="https://example.com/avatar.png" />
-          </div>
-          <p className="text-xs" style={{ color: "var(--color-muted-foreground)" }}>
-            Profile changes are not yet persisted.
-          </p>
-        </form>
+          <button disabled={saving} className="btn-primary">Save Changes</button>
+        </div>
       </div>
-    </AppShell>
+    </div>
   );
 }

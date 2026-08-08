@@ -72,7 +72,7 @@ export default function WorkspaceSelectPage() {
       <div className="space-y-8">
         <div>
           <h1 className="text-3xl font-bold" style={{ color: "var(--color-foreground)" }}>
-            Welcome back, {user?.name || user?.email}!
+            Welcome back, {user?.displayName || user?.email}!
           </h1>
           <p className="mt-1 text-sm" style={{ color: "var(--color-muted-foreground)" }}>
             Select a workspace to get started

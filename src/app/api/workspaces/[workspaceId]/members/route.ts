@@ -1,81 +1,50 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
-import { db } from "@/db/index";
-import { workspaceMembers, users } from "@/db/schema";
-import { eq, and, desc } from "drizzle-orm";
+import { adminAuth } from "@/lib/firebase/admin";
+import { cookies } from "next/headers";
+import { adminDb } from "@/lib/firebase/admin";
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ workspaceId: string }> }
-) {
+export async function GET(request: NextRequest, { params }: { params: { workspaceId: string } }) {
   try {
-    const session = await auth.api.getSession({ headers: request.headers });
-    if (!session || !db) {
+    const sessionCookie = (await cookies()).get("session")?.value;
+    if (!sessionCookie) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const database = db;
-    const { workspaceId } = await params;
+    await adminAuth.verifySessionCookie(sessionCookie, true);
+    const snapshot = await adminDb.collection("workspace_members").where("workspaceId", "==", params.workspaceId).get();
+    const members: any[] = [];
 
-    const [requester] = await database.select().from(workspaceMembers).where(and(eq(workspaceMembers.workspaceId, workspaceId), eq(workspaceMembers.userId, session.user.id))).then(r => [r[0]]);
-
-    if (!requester) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    for (const doc of snapshot.docs) {
+      const data = doc.data();
+      const userDoc = await adminDb.collection("users").doc(data.userId).get();
+      members.push({ id: doc.id, ...data, user: userDoc.data() });
     }
 
-    const members = await database.select().from(workspaceMembers).where(eq(workspaceMembers.workspaceId, workspaceId)).orderBy(desc(workspaceMembers.joinedAt));
-
-    const membersWithUsers = await Promise.all(
-      members.map(async (m) => {
-        const [user] = await database.select().from(users).where(eq(users.id, m.userId)).then(r => [r[0]]);
-        return { ...m, user };
-      })
-    );
-
-    return NextResponse.json({ members: membersWithUsers });
-  } catch (error) {
-    console.error("Get members error:", error);
-    return NextResponse.json({ error: "Failed to fetch members" }, { status: 500 });
+    return NextResponse.json({ members });
+  } catch {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 }
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ workspaceId: string }> }
-) {
+export async function POST(request: NextRequest, { params }: { params: { workspaceId: string } }) {
   try {
-    const session = await auth.api.getSession({ headers: request.headers });
-    if (!session || !db) {
+    const sessionCookie = (await cookies()).get("session")?.value;
+    if (!sessionCookie) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const database = db;
-    const { workspaceId } = await params;
-    const { email, role } = await request.json();
+    const decoded = await adminAuth.verifySessionCookie(sessionCookie, true);
+    const body = await request.json();
 
-    const [requester] = await database.select().from(workspaceMembers).where(and(eq(workspaceMembers.workspaceId, workspaceId), eq(workspaceMembers.userId, session.user.id))).then(r => [r[0]]);
+    await adminDb.collection("workspace_members").add({
+      workspaceId: params.workspaceId,
+      userId: body.userId,
+      role: body.role || "member",
+      joinedAt: new Date(),
+    });
 
-    if (!requester || !["owner", "admin"].includes(requester.role)) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-
-    const [targetUser] = await database.select().from(users).where(eq(users.email, email)).then(r => [r[0]]);
-
-    if (!targetUser) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
-
-    const [existing] = await database.select().from(workspaceMembers).where(and(eq(workspaceMembers.workspaceId, workspaceId), eq(workspaceMembers.userId, targetUser.id))).then(r => [r[0]]);
-
-    if (existing) {
-      return NextResponse.json({ error: "User is already a member" }, { status: 400 });
-    }
-
-    const [member] = await database.insert(workspaceMembers).values({ workspaceId, userId: targetUser.id, role: role || "member" }).returning();
-
-    return NextResponse.json({ member }, { status: 201 });
-  } catch (error: any) {
-    console.error("Add member error:", error);
-    return NextResponse.json({ error: error.message || "Failed to add member" }, { status: 500 });
+    return NextResponse.json({ success: true }, { status: 201 });
+  } catch {
+    return NextResponse.json({ error: "Failed to add member" }, { status: 500 });
   }
 }

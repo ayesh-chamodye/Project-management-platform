@@ -1,34 +1,52 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
-import { db } from "@/db/index";
-import { workspaces, projects, tasks, columns, boards } from "@/db/schema";
-import { eq, sql } from "drizzle-orm";
+import { adminAuth } from "@/lib/firebase/admin";
+import { cookies } from "next/headers";
+import { getWorkspaces, getProjects } from "@/lib/firestore";
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth.api.getSession({ headers: request.headers });
-    if (!session || !db) {
+    const sessionCookie = (await cookies()).get("session")?.value;
+    if (!sessionCookie) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const userWorkspaces = await db.select().from(workspaces).where(eq(workspaces.ownerId, session.user.id));
+    const decoded = await adminAuth.verifySessionCookie(sessionCookie, true);
+    const workspaces = await getWorkspaces(decoded.uid);
+    
+    let projectCount = 0;
+    let taskCount = 0;
+    let completedCount = 0;
 
-    const workspaceCount = userWorkspaces.length;
-    const projectCount = userWorkspaces.reduce((acc, ws) => {
-      return acc + (ws as any).projects?.length || 0;
-    }, 0);
+    for (const workspace of workspaces) {
+      const projects = await getProjects(workspace.id);
+      projectCount += projects.length;
+      
+      for (const project of projects) {
+        const boardsSnapshot = await (await import("@/lib/firebase/admin")).adminDb.collection("boards").where("projectId", "==", project.id).get();
+        for (const board of boardsSnapshot.docs) {
+          const columnsSnapshot = await (await import("@/lib/firebase/admin")).adminDb.collection("boards").doc(board.id).collection("columns").get();
+          for (const column of columnsSnapshot.docs) {
+            const tasksSnapshot = await (await import("@/lib/firebase/admin")).adminDb.collection("boards").doc(board.id).collection("columns").doc(column.id).collection("tasks").get();
+            taskCount += tasksSnapshot.size;
+            tasksSnapshot.forEach((doc) => {
+              const data = doc.data();
+              if (data.status === "done" || data.status === "completed") completedCount++;
+            });
+          }
+        }
+      }
+    }
 
     return NextResponse.json({
       stats: {
-        workspaceCount,
+        workspaceCount: workspaces.length,
         projectCount,
-        taskCount: 0,
-        completedCount: 0,
+        taskCount,
+        completedCount,
         overdueCount: 0,
       },
     });
-  } catch (error) {
-    console.error("Dashboard summary error:", error);
+  } catch {
     return NextResponse.json({ error: "Failed to fetch dashboard data" }, { status: 500 });
   }
 }

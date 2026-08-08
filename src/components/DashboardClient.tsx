@@ -13,8 +13,10 @@ import {
   CheckCircle2,
   Clock,
   AlertCircle,
+  Loader2,
 } from "lucide-react";
 import AppShell from "@/components/AppShell";
+import { useAuth } from "@/components/AuthProvider";
 
 interface Stats {
   workspaceCount: number;
@@ -30,7 +32,7 @@ interface Project {
   description?: string;
   color?: string;
   workspaceId: string;
-  created_at: string;
+  created_at?: string;
 }
 
 interface Task {
@@ -49,8 +51,16 @@ interface Workspace {
   role: string;
 }
 
-export function DashboardClient({ user }: { user: { name?: string; email?: string; image?: string } }) {
+interface DashboardUser {
+  uid: string;
+  email: string | null;
+  displayName: string | null;
+  photoURL: string | null;
+}
+
+export function DashboardClient({ user }: { user: DashboardUser }) {
   const router = useRouter();
+  const { user: authUser, loading: authLoading } = useAuth();
   const [stats, setStats] = useState<Stats>({ workspaceCount: 0, projectCount: 0, taskCount: 0, completedCount: 0, overdueCount: 0 });
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -92,7 +102,7 @@ export function DashboardClient({ user }: { user: { name?: string; email?: strin
         if (data?.projects) allProjects.push(...data.projects);
       });
 
-      allProjects.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      allProjects.sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
       setProjects(allProjects.slice(0, 8));
     } catch {}
   }, [workspaces]);
@@ -122,13 +132,18 @@ export function DashboardClient({ user }: { user: { name?: string; email?: strin
   }, [workspaces]);
 
   useEffect(() => {
+    if (authLoading) return;
+    if (!authUser) {
+      router.push("/login");
+      return;
+    }
     (async () => {
       try {
         await Promise.all([fetchStats(), fetchWorkspaces(), fetchRecentProjects(), fetchMyTasks()]);
       } catch {}
       setLoading(false);
     })();
-  }, [fetchStats, fetchWorkspaces, fetchRecentProjects, fetchMyTasks]);
+  }, [authUser, authLoading, fetchStats, fetchWorkspaces, fetchRecentProjects, fetchMyTasks, router]);
 
   const statCards = [
     { label: "Workspaces", value: stats.workspaceCount, icon: Users, color: "bg-indigo-500" },
@@ -150,12 +165,20 @@ export function DashboardClient({ user }: { user: { name?: string; email?: strin
     }
   };
 
+  if (authLoading || loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin" style={{ color: "var(--color-primary)" }} />
+      </div>
+    );
+  }
+
   return (
     <AppShell>
       <div className="space-y-8">
         <div>
           <h1 className="text-3xl font-bold" style={{ color: "var(--color-foreground)" }}>
-            Welcome back, {user.name || user.email}!
+            Welcome back, {authUser?.displayName || authUser?.email || "User"}!
           </h1>
           <p className="mt-1 text-sm" style={{ color: "var(--color-muted-foreground)" }}>
             Here&apos;s what&apos;s happening across your workspaces.

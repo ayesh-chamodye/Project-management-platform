@@ -1,64 +1,51 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
-import { db } from "@/db/index";
-import { workspaceMembers, projects } from "@/db/schema";
-import { eq, and, desc } from "drizzle-orm";
+import { adminAuth } from "@/lib/firebase/admin";
+import { cookies } from "next/headers";
+import { getWorkspace, getProjects, createProject, getWorkspaceMembers } from "@/lib/firestore";
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ workspaceId: string }> }
-) {
+export async function GET(request: NextRequest, { params }: { params: { workspaceId: string } }) {
   try {
-    const session = await auth.api.getSession({ headers: request.headers });
-    if (!session || !db) {
+    const sessionCookie = (await cookies()).get("session")?.value;
+    if (!sessionCookie) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const database = db;
+    await adminAuth.verifySessionCookie(sessionCookie, true);
+    const workspace = await getWorkspace(params.workspaceId);
 
-    const { workspaceId } = await params;
-
-    const [member] = await database.select().from(workspaceMembers).where(and(eq(workspaceMembers.workspaceId, workspaceId), eq(workspaceMembers.userId, session.user.id))).then(r => [r[0]]);
-
-    if (!member) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    if (!workspace) {
+      return NextResponse.json({ error: "Workspace not found" }, { status: 404 });
     }
 
-    const userProjects = await database.select().from(projects).where(eq(projects.workspaceId, workspaceId)).orderBy(desc(projects.createdAt));
+    const projects = await getProjects(params.workspaceId);
+    const members = await getWorkspaceMembers(params.workspaceId);
 
-    return NextResponse.json({ projects: userProjects });
-  } catch (error) {
-    console.error("Get projects error:", error);
-    return NextResponse.json({ error: "Failed to fetch projects" }, { status: 500 });
+    return NextResponse.json({ workspace, projects, members });
+  } catch {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 }
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ workspaceId: string }> }
-) {
+export async function POST(request: NextRequest, { params }: { params: { workspaceId: string } }) {
   try {
-    const session = await auth.api.getSession({ headers: request.headers });
-    if (!session || !db) {
+    const sessionCookie = (await cookies()).get("session")?.value;
+    if (!sessionCookie) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const database = db;
+    const decoded = await adminAuth.verifySessionCookie(sessionCookie, true);
+    const body = await request.json();
 
-    const { workspaceId } = await params;
-    const { name, description, color } = await request.json();
+    const projectId = await createProject({
+      name: body.name,
+      description: body.description,
+      color: body.color || "#6366f1",
+      workspaceId: params.workspaceId,
+      createdById: decoded.uid,
+    });
 
-    const [member] = await database.select().from(workspaceMembers).where(and(eq(workspaceMembers.workspaceId, workspaceId), eq(workspaceMembers.userId, session.user.id))).then(r => [r[0]]);
-
-    if (!member || !["owner", "admin"].includes(member.role)) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-
-    const [project] = await database.insert(projects).values({ name: name.trim(), description: description?.trim() || null, color: color || "#6366f1", workspaceId, createdById: session.user.id }).returning();
-
-    return NextResponse.json({ project }, { status: 201 });
-  } catch (error: any) {
-    console.error("Create project error:", error);
-    return NextResponse.json({ error: error.message || "Failed to create project" }, { status: 500 });
+    return NextResponse.json({ project: { id: projectId, ...body } });
+  } catch {
+    return NextResponse.json({ error: "Failed to create project" }, { status: 500 });
   }
 }

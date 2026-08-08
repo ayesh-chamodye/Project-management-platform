@@ -1,11 +1,7 @@
-import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { NextRequest, NextResponse } from "next/server";
+import { cookies } from "next/headers";
 
 export async function POST() {
-  try {
-    await auth.api.signOut();
-    return NextResponse.json({ success: true });
-  } catch (error) {
-    return NextResponse.json({ error: "Logout failed" }, { status: 500 });
-  }
+  (await cookies()).delete("session");
+  return NextResponse.json({ authenticated: false });
 }

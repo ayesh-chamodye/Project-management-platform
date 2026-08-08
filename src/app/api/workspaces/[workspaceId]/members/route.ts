@@ -3,15 +3,16 @@ import { adminAuth } from "@/lib/firebase/admin";
 import { cookies } from "next/headers";
 import { adminDb } from "@/lib/firebase/admin";
 
-export async function GET(request: NextRequest, { params }: { params: { workspaceId: string } }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ workspaceId: string }> }) {
   try {
+    const { workspaceId } = await params;
     const sessionCookie = (await cookies()).get("session")?.value;
     if (!sessionCookie) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     await adminAuth.verifySessionCookie(sessionCookie, true);
-    const snapshot = await adminDb.collection("workspace_members").where("workspaceId", "==", params.workspaceId).get();
+    const snapshot = await adminDb.collection("workspace_members").where("workspaceId", "==", workspaceId).get();
     const members: any[] = [];
 
     for (const doc of snapshot.docs) {
@@ -26,8 +27,9 @@ export async function GET(request: NextRequest, { params }: { params: { workspac
   }
 }
 
-export async function POST(request: NextRequest, { params }: { params: { workspaceId: string } }) {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ workspaceId: string }> }) {
   try {
+    const { workspaceId } = await params;
     const sessionCookie = (await cookies()).get("session")?.value;
     if (!sessionCookie) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -37,7 +39,7 @@ export async function POST(request: NextRequest, { params }: { params: { workspa
     const body = await request.json();
 
     await adminDb.collection("workspace_members").add({
-      workspaceId: params.workspaceId,
+      workspaceId: workspaceId,
       userId: body.userId,
       role: body.role || "member",
       joinedAt: new Date(),

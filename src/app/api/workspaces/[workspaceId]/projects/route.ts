@@ -3,22 +3,23 @@ import { adminAuth } from "@/lib/firebase/admin";
 import { cookies } from "next/headers";
 import { getWorkspace, getProjects, createProject, getWorkspaceMembers } from "@/lib/firestore";
 
-export async function GET(request: NextRequest, { params }: { params: { workspaceId: string } }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ workspaceId: string }> }) {
   try {
+    const { workspaceId } = await params;
     const sessionCookie = (await cookies()).get("session")?.value;
     if (!sessionCookie) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     await adminAuth.verifySessionCookie(sessionCookie, true);
-    const workspace = await getWorkspace(params.workspaceId);
+    const workspace = await getWorkspace(workspaceId);
 
     if (!workspace) {
       return NextResponse.json({ error: "Workspace not found" }, { status: 404 });
     }
 
-    const projects = await getProjects(params.workspaceId);
-    const members = await getWorkspaceMembers(params.workspaceId);
+    const projects = await getProjects(workspaceId);
+    const members = await getWorkspaceMembers(workspaceId);
 
     return NextResponse.json({ workspace, projects, members });
   } catch {
@@ -26,8 +27,9 @@ export async function GET(request: NextRequest, { params }: { params: { workspac
   }
 }
 
-export async function POST(request: NextRequest, { params }: { params: { workspaceId: string } }) {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ workspaceId: string }> }) {
   try {
+    const { workspaceId } = await params;
     const sessionCookie = (await cookies()).get("session")?.value;
     if (!sessionCookie) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -40,7 +42,7 @@ export async function POST(request: NextRequest, { params }: { params: { workspa
       name: body.name,
       description: body.description,
       color: body.color || "#6366f1",
-      workspaceId: params.workspaceId,
+      workspaceId: workspaceId,
       createdById: decoded.uid,
     });
 

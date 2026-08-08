@@ -3,8 +3,9 @@ import { adminAuth } from "@/lib/firebase/admin";
 import { cookies } from "next/headers";
 import { adminDb } from "@/lib/firebase/admin";
 
-export async function PUT(request: NextRequest, { params }: { params: { workspaceId: string; columnId: string } }) {
+export async function PUT(request: NextRequest, { params }: { params: Promise<{ workspaceId: string; columnId: string }> }) {
   try {
+    const { columnId } = await params;
     const sessionCookie = (await cookies()).get("session")?.value;
     if (!sessionCookie) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -18,7 +19,7 @@ export async function PUT(request: NextRequest, { params }: { params: { workspac
       return NextResponse.json({ error: "boardId is required" }, { status: 400 });
     }
 
-    await adminDb.collection("boards").doc(boardId).collection("columns").doc(params.columnId).set(body, { merge: true });
+    await adminDb.collection("boards").doc(boardId).collection("columns").doc(columnId).set(body, { merge: true });
 
     return NextResponse.json({ success: true });
   } catch {
@@ -26,8 +27,9 @@ export async function PUT(request: NextRequest, { params }: { params: { workspac
   }
 }
 
-export async function DELETE(request: NextRequest, { params }: { params: { workspaceId: string; columnId: string } }) {
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ workspaceId: string; columnId: string }> }) {
   try {
+    const { columnId } = await params;
     const sessionCookie = (await cookies()).get("session")?.value;
     if (!sessionCookie) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -40,7 +42,7 @@ export async function DELETE(request: NextRequest, { params }: { params: { works
       return NextResponse.json({ error: "boardId is required" }, { status: 400 });
     }
 
-    await adminDb.collection("boards").doc(boardId).collection("columns").doc(params.columnId).delete();
+    await adminDb.collection("boards").doc(boardId).collection("columns").doc(columnId).delete();
 
     return NextResponse.json({ success: true });
   } catch {

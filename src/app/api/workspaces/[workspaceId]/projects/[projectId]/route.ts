@@ -3,15 +3,16 @@ import { adminAuth } from "@/lib/firebase/admin";
 import { cookies } from "next/headers";
 import { getProject, updateProject, deleteProject } from "@/lib/firestore";
 
-export async function GET(request: NextRequest, { params }: { params: { projectId: string } }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ projectId: string }> }) {
   try {
+    const { projectId } = await params;
     const sessionCookie = (await cookies()).get("session")?.value;
     if (!sessionCookie) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     await adminAuth.verifySessionCookie(sessionCookie, true);
-    const project = await getProject(params.projectId);
+    const project = await getProject(projectId);
 
     if (!project) {
       return NextResponse.json({ error: "Project not found" }, { status: 404 });
@@ -23,8 +24,9 @@ export async function GET(request: NextRequest, { params }: { params: { projectI
   }
 }
 
-export async function PUT(request: NextRequest, { params }: { params: { projectId: string } }) {
+export async function PUT(request: NextRequest, { params }: { params: Promise<{ projectId: string }> }) {
   try {
+    const { projectId } = await params;
     const sessionCookie = (await cookies()).get("session")?.value;
     if (!sessionCookie) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -33,7 +35,7 @@ export async function PUT(request: NextRequest, { params }: { params: { projectI
     await adminAuth.verifySessionCookie(sessionCookie, true);
     const body = await request.json();
 
-    await updateProject(params.projectId, {
+    await updateProject(projectId, {
       name: body.name,
       description: body.description,
       color: body.color,
@@ -45,15 +47,16 @@ export async function PUT(request: NextRequest, { params }: { params: { projectI
   }
 }
 
-export async function DELETE(request: NextRequest, { params }: { params: { projectId: string } }) {
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ projectId: string }> }) {
   try {
+    const { projectId } = await params;
     const sessionCookie = (await cookies()).get("session")?.value;
     if (!sessionCookie) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     await adminAuth.verifySessionCookie(sessionCookie, true);
-    await deleteProject(params.projectId);
+    await deleteProject(projectId);
 
     return NextResponse.json({ success: true });
   } catch {

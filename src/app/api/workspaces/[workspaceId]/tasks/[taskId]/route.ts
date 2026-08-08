@@ -3,15 +3,16 @@ import { adminAuth } from "@/lib/firebase/admin";
 import { cookies } from "next/headers";
 import { getTask, updateTask, deleteTask } from "@/lib/firestore";
 
-export async function GET(request: NextRequest, { params }: { params: { workspaceId: string; taskId: string } }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ workspaceId: string; taskId: string }> }) {
   try {
+    const { taskId } = await params;
     const sessionCookie = (await cookies()).get("session")?.value;
     if (!sessionCookie) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     await adminAuth.verifySessionCookie(sessionCookie, true);
-    const task = await getTask(params.taskId);
+    const task = await getTask(taskId);
 
     if (!task) {
       return NextResponse.json({ error: "Task not found" }, { status: 404 });
@@ -23,8 +24,9 @@ export async function GET(request: NextRequest, { params }: { params: { workspac
   }
 }
 
-export async function PUT(request: NextRequest, { params }: { params: { workspaceId: string; taskId: string } }) {
+export async function PUT(request: NextRequest, { params }: { params: Promise<{ workspaceId: string; taskId: string }> }) {
   try {
+    const { taskId } = await params;
     const sessionCookie = (await cookies()).get("session")?.value;
     if (!sessionCookie) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -33,7 +35,7 @@ export async function PUT(request: NextRequest, { params }: { params: { workspac
     await adminAuth.verifySessionCookie(sessionCookie, true);
     const body = await request.json();
 
-    await updateTask(params.taskId, body);
+    await updateTask(taskId, body);
 
     return NextResponse.json({ success: true });
   } catch {
@@ -41,15 +43,16 @@ export async function PUT(request: NextRequest, { params }: { params: { workspac
   }
 }
 
-export async function DELETE(request: NextRequest, { params }: { params: { workspaceId: string; taskId: string } }) {
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ workspaceId: string; taskId: string }> }) {
   try {
+    const { taskId } = await params;
     const sessionCookie = (await cookies()).get("session")?.value;
     if (!sessionCookie) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     await adminAuth.verifySessionCookie(sessionCookie, true);
-    await deleteTask(params.taskId);
+    await deleteTask(taskId);
 
     return NextResponse.json({ success: true });
   } catch {

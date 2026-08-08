@@ -3,7 +3,7 @@ import { adminAuth } from "@/lib/firebase/admin";
 import { cookies } from "next/headers";
 import { adminDb } from "@/lib/firebase/admin";
 
-export async function GET(request: NextRequest, { params }: { params: { workspaceId: string } }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ workspaceId: string }> }) {
   try {
     const sessionCookie = (await cookies()).get("session")?.value;
     if (!sessionCookie) {
@@ -26,7 +26,7 @@ export async function GET(request: NextRequest, { params }: { params: { workspac
   }
 }
 
-export async function POST(request: NextRequest, { params }: { params: { workspaceId: string } }) {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ workspaceId: string }> }) {
   try {
     const sessionCookie = (await cookies()).get("session")?.value;
     if (!sessionCookie) {

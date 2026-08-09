@@ -37,6 +37,7 @@ export function RegisterForm() {
 
     try {
       const { auth } = await import("@/lib/firebase/config");
+      if (!auth) throw new Error("Firebase is not configured");
       const { createUserWithEmailAndPassword } = await import("firebase/auth");
       const cred = await createUserWithEmailAndPassword(auth, email, password);
       await (cred.user as any).updateProfile({ displayName: name });

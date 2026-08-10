@@ -1,5 +1,5 @@
 import { getApps, initializeApp } from "firebase/app";
-import { getAuth, GoogleAuthProvider, signInWithRedirect, signOut as firebaseSignOut, onAuthStateChanged, User, getRedirectResult } from "firebase/auth";
+import { getAuth, GoogleAuthProvider, signInWithRedirect, signOut as firebaseSignOut, onAuthStateChanged, User } from "firebase/auth";
 import { getFirestore, doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 import { auth, db } from "./config";
 
@@ -13,30 +13,55 @@ export async function signInWithGoogle() {
 }
 
 export async function completeRedirectSignIn() {
-  const result = await getRedirectResult(firebaseAuth);
-  if (result?.user) {
-    const userRef = doc(firebaseDb, "users", result.user.uid);
-    const userSnap = await getDoc(userRef);
+  return new Promise<void>((resolve, reject) => {
+    let timeout: ReturnType<typeof setTimeout>;
 
-    if (!userSnap.exists()) {
-      await setDoc(userRef, {
-        uid: result.user.uid,
-        email: result.user.email,
-        displayName: result.user.displayName,
-        photoURL: result.user.photoURL,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      });
-    }
+    const unsubscribe = onAuthStateChanged(firebaseAuth, async (user) => {
+      clearTimeout(timeout);
+      unsubscribe();
 
-    const idToken = await result.user.getIdToken();
-    const res = await fetch("/api/auth/session", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ idToken }),
+      if (user) {
+        try {
+          const userRef = doc(firebaseDb, "users", user.uid);
+          const userSnap = await getDoc(userRef);
+
+          if (!userSnap.exists()) {
+            await setDoc(userRef, {
+              uid: user.uid,
+              email: user.email,
+              displayName: user.displayName,
+              photoURL: user.photoURL,
+              createdAt: serverTimestamp(),
+              updatedAt: serverTimestamp(),
+            });
+          }
+
+          const idToken = await user.getIdToken();
+          const res = await fetch("/api/auth/session", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ idToken }),
+          });
+
+          if (!res.ok) {
+            const error = await res.json();
+            throw new Error(error.error || "Failed to create session");
+          }
+
+          resolve();
+        } catch (err) {
+          reject(err);
+        }
+      } else {
+        resolve();
+      }
     });
-    if (!res.ok) throw new Error("Failed to create session");
-  }
+
+    timeout = setTimeout(() => {
+      unsubscribe();
+      reject(new Error("Timeout waiting for auth state"));
+    }, 10000);
+  });
 }
 
 export async function signOut() {

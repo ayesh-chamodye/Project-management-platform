@@ -36,16 +36,9 @@ export async function proxy(request: NextRequest) {
       return [name, rest.join("=")];
     })
   );
-  const accessToken = cookies["sb-access-token"];
+  const session = cookies["session"];
 
-  if (!accessToken) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/login";
-    return NextResponse.redirect(url);
-  }
-
-  const payload = parseJwt(accessToken);
-  if (!payload || !payload.exp || Date.now() > payload.exp * 1000) {
+  if (!session) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);

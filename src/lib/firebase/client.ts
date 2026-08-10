@@ -13,14 +13,16 @@ export async function signInWithGoogle() {
 }
 
 export async function completeRedirectSignIn() {
-  return new Promise<void>((resolve, reject) => {
+  return new Promise<void>((resolve) => {
+    let resolved = false;
     let timeout: ReturnType<typeof setTimeout>;
 
     const unsubscribe = onAuthStateChanged(firebaseAuth, async (user) => {
-      clearTimeout(timeout);
-      unsubscribe();
+      if (resolved) return;
 
       if (user) {
+        resolved = true;
+        clearTimeout(timeout);
         try {
           const userRef = doc(firebaseDb, "users", user.uid);
           const userSnap = await getDoc(userRef);
@@ -44,23 +46,22 @@ export async function completeRedirectSignIn() {
           });
 
           if (!res.ok) {
-            const error = await res.json();
-            throw new Error(error.error || "Failed to create session");
+            console.error("Failed to create session:", await res.text());
           }
-
-          resolve();
         } catch (err) {
-          reject(err);
+          console.error("Error completing redirect sign-in:", err);
+        } finally {
+          unsubscribe();
+          resolve();
         }
-      } else {
-        resolve();
       }
     });
 
     timeout = setTimeout(() => {
+      resolved = true;
       unsubscribe();
-      reject(new Error("Timeout waiting for auth state"));
-    }, 10000);
+      resolve();
+    }, 5000);
   });
 }
 

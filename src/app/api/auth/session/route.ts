@@ -8,13 +8,16 @@ export async function POST(request: NextRequest) {
     const { idToken } = body;
 
     if (!idToken) {
+      console.error("Session creation error: missing ID token");
       return NextResponse.json({ error: "Missing ID token" }, { status: 401 });
     }
 
     const decoded = await adminAuth.verifyIdToken(idToken);
+    console.log("Token verified for user:", decoded.uid);
 
     const expiresIn = 60 * 60 * 24 * 7 * 1000;
     const sessionCookie = await adminAuth.createSessionCookie(idToken, { expiresIn });
+    console.log("Session cookie created");
 
     const response = NextResponse.json({ authenticated: true, user: { uid: decoded.uid, email: decoded.email } });
     response.cookies.set("session", sessionCookie, {
@@ -26,8 +29,8 @@ export async function POST(request: NextRequest) {
     });
 
     return response;
-  } catch (error) {
+  } catch (error: any) {
     console.error("Session creation error:", error);
-    return NextResponse.json({ error: "Invalid token" }, { status: 401 });
+    return NextResponse.json({ error: "Invalid token", details: error.message }, { status: 401 });
   }
 }

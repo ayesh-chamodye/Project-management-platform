@@ -8,10 +8,13 @@ export async function GET() {
     const sessionCookie = cookieStore.get("session")?.value;
 
     if (!sessionCookie) {
+      console.log("Auth check: no session cookie");
       return NextResponse.json({ authenticated: false }, { status: 401 });
     }
 
+    console.log("Auth check: verifying session cookie");
     const decoded = await adminAuth.verifySessionCookie(sessionCookie, true);
+    console.log("Auth check: verified user", decoded.uid);
     return NextResponse.json({
       authenticated: true,
       user: {
@@ -21,7 +24,8 @@ export async function GET() {
         picture: decoded.picture,
       },
     });
-  } catch {
+  } catch (error: any) {
+    console.error("Auth check error:", error);
     (await cookies()).delete("session");
     return NextResponse.json({ authenticated: false }, { status: 401 });
   }

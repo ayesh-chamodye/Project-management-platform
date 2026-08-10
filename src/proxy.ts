@@ -39,6 +39,7 @@ export async function proxy(request: NextRequest) {
   const session = cookies["session"];
 
   if (!session) {
+    console.log("Proxy: redirecting to login, no session cookie for", pathname);
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);

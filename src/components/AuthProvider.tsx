@@ -46,8 +46,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async function init() {
       try {
         await completeRedirectSignIn();
-      } catch {
-        // ignore redirect errors
+      } catch (err) {
+        console.error("Redirect sign-in error:", err);
       }
       await refresh();
     }

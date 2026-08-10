@@ -1,5 +1,5 @@
 import { getApps, initializeApp } from "firebase/app";
-import { getAuth, GoogleAuthProvider, signOut as firebaseSignOut, onAuthStateChanged, User, getRedirectResult } from "firebase/auth";
+import { getAuth, GoogleAuthProvider, signInWithRedirect, signOut as firebaseSignOut, onAuthStateChanged, User, getRedirectResult } from "firebase/auth";
 import { getFirestore, doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 import { auth, db } from "./config";
 
@@ -9,7 +9,7 @@ const firebaseAuth = auth!;
 const firebaseDb = db!;
 
 export async function signInWithGoogle() {
-  await getRedirectResult(firebaseAuth);
+  await signInWithRedirect(firebaseAuth, googleProvider);
 }
 
 export async function completeRedirectSignIn() {

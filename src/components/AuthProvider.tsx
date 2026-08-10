@@ -1,6 +1,7 @@
 "use client";
 
 import { type ReactNode, createContext, useContext, useState, useEffect } from "react";
+import { completeRedirectSignIn } from "@/lib/firebase/client";
 
 interface User {
   uid: string;
@@ -42,7 +43,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   useEffect(() => {
-    refresh();
+    async function init() {
+      try {
+        await completeRedirectSignIn();
+      } catch {
+        // ignore redirect errors
+      }
+      await refresh();
+    }
+    init();
   }, []);
 
   return (

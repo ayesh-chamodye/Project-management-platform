@@ -40,8 +40,6 @@ export function LoginForm() {
     setError("");
     try {
       await signInWithGoogle();
-      await refresh();
-      router.push("/dashboard");
     } catch (err: any) {
       setError(err?.message?.replace("Firebase: ", "") || "Google sign-in failed. Please try again.");
       setLoading(false);

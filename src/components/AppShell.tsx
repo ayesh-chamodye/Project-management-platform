@@ -15,6 +15,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
+import { signOut } from "@/lib/firebase/client";
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -24,8 +25,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   async function handleLogout() {
     await fetch("/api/auth/logout", { method: "POST" });
+    await signOut();
     router.push("/login");
-    router.refresh();
   }
 
   const links = [

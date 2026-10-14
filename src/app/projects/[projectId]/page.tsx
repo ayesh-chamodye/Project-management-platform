@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Calendar } from "lucide-react";
 import AppShell from "@/components/AppShell";
+import { useAuth } from "@/components/AuthProvider";
 
 interface Project {
   id: string;
@@ -17,17 +18,18 @@ interface Project {
 export default function ProjectPage({ params }: { params: Promise<{ projectId: string }> }) {
   const router = useRouter();
   const { projectId } = use(params);
+  const { user, loading: authLoading } = useAuth();
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (authLoading) return;
+    if (!user) {
+      router.push("/login");
+      return;
+    }
     (async () => {
       try {
-        const res = await fetch("/api/auth/check", { cache: "no-store" });
-        if (!res.ok) {
-          router.push("/login");
-          return;
-        }
         const pr = await fetch(`/api/projects/${projectId}`);
         if (pr.ok) {
           const data = await pr.json();
@@ -37,7 +39,7 @@ export default function ProjectPage({ params }: { params: Promise<{ projectId: s
         setLoading(false);
       }
     })();
-  }, [projectId, router]);
+  }, [projectId, router, user, authLoading]);
 
   if (loading) {
     return (

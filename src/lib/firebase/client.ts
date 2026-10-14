@@ -13,9 +13,23 @@ export async function signInWithGoogle() {
   await signInWithRedirect(firebaseAuth, googleProvider);
 }
 
-export async function completeRedirectSignIn() {
+export async function establishSession(idToken: string): Promise<boolean> {
+  const res = await fetch("/api/auth/session", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ idToken }),
+  });
+
+  if (!res.ok) {
+    console.error("Failed to create session:", res.status, await res.text());
+  }
+
+  return res.ok;
+}
+
+export async function completeRedirectSignIn(): Promise<boolean> {
   console.log("Checking for redirect result...");
-  return new Promise<void>((resolve) => {
+  return new Promise<boolean>((resolve) => {
     let resolved = false;
     let timeout: ReturnType<typeof setTimeout>;
 
@@ -45,21 +59,12 @@ export async function completeRedirectSignIn() {
 
           const idToken = await user.getIdToken();
           console.log("Got ID token, calling /api/auth/session");
-          const res = await fetch("/api/auth/session", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ idToken }),
-          });
-
-          console.log("Session API response:", res.status, await res.text());
-          if (!res.ok) {
-            console.error("Failed to create session");
-          }
+          resolve(await establishSession(idToken));
         } catch (err) {
           console.error("Error completing redirect sign-in:", err);
+          resolve(false);
         } finally {
           unsubscribe();
-          resolve();
         }
       }
     });
@@ -68,7 +73,7 @@ export async function completeRedirectSignIn() {
       console.log("Timeout waiting for auth state");
       resolved = true;
       unsubscribe();
-      resolve();
+      resolve(false);
     }, 8000);
   });
 }

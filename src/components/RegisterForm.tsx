@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { signInWithGoogle } from "@/lib/firebase/client";
+import { signInWithGoogle, establishSession } from "@/lib/firebase/client";
 import { useAuth } from "@/components/AuthProvider";
 import { User, Loader2, Mail, Lock, Eye, EyeOff } from "lucide-react";
 
@@ -39,6 +39,8 @@ export function RegisterForm() {
       const { createUserWithEmailAndPassword } = await import("firebase/auth");
       const cred = await createUserWithEmailAndPassword(auth, email, password);
       await (cred.user as any).updateProfile({ displayName: name });
+      const idToken = await cred.user.getIdToken();
+      await establishSession(idToken);
       await refresh();
       router.push("/dashboard");
     } catch (err: any) {

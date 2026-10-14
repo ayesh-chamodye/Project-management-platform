@@ -3,9 +3,14 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { signInWithGoogle } from "@/lib/firebase/client";
+import { signInWithGoogle, establishSession } from "@/lib/firebase/client";
 import { useAuth } from "@/components/AuthProvider";
 import { Mail, Lock, Loader2, Eye, EyeOff } from "lucide-react";
+
+function resolveNextPath(fallback: string): string {
+  const next = new URLSearchParams(window.location.search).get("next");
+  return next && next.startsWith("/") && !next.startsWith("//") ? next : fallback;
+}
 
 export function LoginForm() {
   const router = useRouter();
@@ -25,9 +30,11 @@ export function LoginForm() {
       const { signInWithEmailAndPassword } = await import("firebase/auth");
       const { auth } = await import("@/lib/firebase/config");
       if (!auth) throw new Error("Firebase is not configured");
-      await signInWithEmailAndPassword(auth, email, password);
+      const cred = await signInWithEmailAndPassword(auth, email, password);
+      const idToken = await cred.user.getIdToken();
+      await establishSession(idToken);
       await refresh();
-      router.push("/dashboard");
+      router.push(resolveNextPath("/dashboard"));
     } catch (err: any) {
       setError(err?.message?.replace("Firebase: ", "") || "Invalid email or password");
     } finally {

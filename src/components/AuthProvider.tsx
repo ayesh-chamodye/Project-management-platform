@@ -1,6 +1,7 @@
 "use client";
 
 import { type ReactNode, createContext, useContext, useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { completeRedirectSignIn } from "@/lib/firebase/client";
 
 interface User {
@@ -22,9 +23,16 @@ const AuthContext = createContext<AuthContextType>({
   refresh: async () => {},
 });
 
+function resolveNextPath(fallback: string): string {
+  if (typeof window === "undefined") return fallback;
+  const next = new URLSearchParams(window.location.search).get("next");
+  return next && next.startsWith("/") && !next.startsWith("//") ? next : fallback;
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const router = useRouter();
 
   async function refresh() {
     try {
@@ -44,15 +52,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     async function init() {
+      let sessionEstablished = false;
       try {
-        await completeRedirectSignIn();
+        sessionEstablished = await completeRedirectSignIn();
       } catch (err) {
         console.error("Redirect sign-in error:", err);
       }
       await refresh();
+      if (sessionEstablished) {
+        router.replace(resolveNextPath("/dashboard"));
+      }
     }
     init();
-  }, []);
+  }, [router]);
 
   return (
     <AuthContext.Provider value={{ user, loading, refresh }}>

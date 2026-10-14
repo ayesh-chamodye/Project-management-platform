@@ -2,7 +2,7 @@
 
 import { type ReactNode, createContext, useContext, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { onAuthChange, drainRedirectError } from "@/lib/firebase/client";
+import { onAuthChange } from "@/lib/firebase/client";
 import { ensureUserProfile, getUserProfile } from "@/lib/firebase/users";
 
 interface User {
@@ -30,8 +30,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
-    drainRedirectError();
-
     return onAuthChange((firebaseUser) => {
       setLoading(false);
 

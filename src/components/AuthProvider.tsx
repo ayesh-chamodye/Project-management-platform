@@ -62,7 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .catch(() => {});
 
       if (AUTH_PATHS.includes(window.location.pathname)) {
-        router.replace("/");
+        router.replace("/dashboard");
       }
     });
   }, [router]);

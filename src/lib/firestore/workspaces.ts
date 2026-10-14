@@ -1,4 +1,4 @@
-import { addDoc, arrayRemove, arrayUnion, collection, deleteDoc, doc, getDoc, getDocs, limit, orderBy, query, serverTimestamp, updateDoc, where } from "firebase/firestore";
+import { addDoc, arrayRemove, arrayUnion, collection, deleteDoc, doc, getDoc, getDocs, limit, query, serverTimestamp, updateDoc, where } from "firebase/firestore";
 import { db } from "../firebase/config";
 import { logActivity } from "./activity";
 import type { Workspace, WorkspaceMember } from "./types";
@@ -9,14 +9,15 @@ function slugify(value: string) {
   return value.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "workspace";
 }
 
+// No server-side orderBy here: combining array-contains with an orderBy would
+// require a composite index. Workspace counts are small, so sorting in JS keeps
+// the app working without a manually deployed index.
 export async function listMyWorkspaces(userId: string): Promise<Workspace[]> {
-  const q = query(
-    collection(firestore, "workspaces"),
-    where("memberIds", "array-contains", userId),
-    orderBy("updatedAt", "desc")
-  );
+  const q = query(collection(firestore, "workspaces"), where("memberIds", "array-contains", userId));
   const snap = await getDocs(q);
-  return snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Workspace, "id">) }));
+  return snap.docs
+    .map((d) => ({ id: d.id, ...(d.data() as Omit<Workspace, "id">) }))
+    .sort((a, b) => (b.updatedAt?.toMillis() ?? 0) - (a.updatedAt?.toMillis() ?? 0));
 }
 
 export async function getWorkspace(workspaceId: string): Promise<Workspace | null> {

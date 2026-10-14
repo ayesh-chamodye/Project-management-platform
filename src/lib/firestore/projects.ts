@@ -1,19 +1,17 @@
-import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, limit, orderBy, query, serverTimestamp, updateDoc, where } from "firebase/firestore";
+import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, limit, query, serverTimestamp, updateDoc, where } from "firebase/firestore";
 import { db } from "../firebase/config";
 import { logActivity } from "./activity";
 import type { Project, ProjectStatus } from "./types";
 
 const firestore = db!;
 
+// Sorted client-side: a where + orderBy on different fields needs a composite index.
 export async function listProjects(workspaceId: string, max = 100): Promise<Project[]> {
-  const q = query(
-    collection(firestore, "projects"),
-    where("workspaceId", "==", workspaceId),
-    orderBy("updatedAt", "desc"),
-    limit(max)
-  );
+  const q = query(collection(firestore, "projects"), where("workspaceId", "==", workspaceId), limit(max));
   const snap = await getDocs(q);
-  return snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Project, "id">) }));
+  return snap.docs
+    .map((d) => ({ id: d.id, ...(d.data() as Omit<Project, "id">) }))
+    .sort((a, b) => (b.updatedAt?.toMillis() ?? 0) - (a.updatedAt?.toMillis() ?? 0));
 }
 
 export async function getProject(projectId: string): Promise<Project | null> {

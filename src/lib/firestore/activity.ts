@@ -1,4 +1,4 @@
-import { addDoc, collection, doc, getDoc, getDocs, limit, orderBy, query, serverTimestamp, updateDoc, where } from "firebase/firestore";
+import { addDoc, collection, getDocs, limit, query, serverTimestamp, where } from "firebase/firestore";
 import { db } from "../firebase/config";
 import type { Activity } from "./types";
 
@@ -38,13 +38,13 @@ export async function logActivity(
   });
 }
 
+// Sorted client-side: where + orderBy on different fields requires a composite
+// index. A larger window is fetched first so the sort keeps the newest items.
 export async function listRecentActivity(workspaceId: string, max = 30): Promise<Activity[]> {
-  const q = query(
-    collection(firestore, "activity"),
-    where("workspaceId", "==", workspaceId),
-    orderBy("createdAt", "desc"),
-    limit(max)
-  );
+  const q = query(collection(firestore, "activity"), where("workspaceId", "==", workspaceId), limit(Math.max(max, 100)));
   const snap = await getDocs(q);
-  return snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Activity, "id">) }));
+  return snap.docs
+    .map((d) => ({ id: d.id, ...(d.data() as Omit<Activity, "id">) }))
+    .sort((a, b) => (b.createdAt?.toMillis() ?? 0) - (a.createdAt?.toMillis() ?? 0))
+    .slice(0, max);
 }

@@ -1,30 +1,25 @@
-import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, limit, orderBy, query, serverTimestamp, updateDoc, where, writeBatch } from "firebase/firestore";
+import { addDoc, collection, deleteDoc, doc, getDocs, limit, query, serverTimestamp, updateDoc, where, writeBatch } from "firebase/firestore";
 import { db } from "../firebase/config";
 import { logActivity } from "./activity";
 import type { Task, TaskPriority, TaskStatus } from "./types";
 
 const firestore = db!;
 
+// Sorted client-side: where + orderBy on different fields requires a composite index.
 export async function listWorkspaceTasks(workspaceId: string, max = 500): Promise<Task[]> {
-  const q = query(
-    collection(firestore, "tasks"),
-    where("workspaceId", "==", workspaceId),
-    orderBy("updatedAt", "desc"),
-    limit(max)
-  );
+  const q = query(collection(firestore, "tasks"), where("workspaceId", "==", workspaceId), limit(max));
   const snap = await getDocs(q);
-  return snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Task, "id">) }));
+  return snap.docs
+    .map((d) => ({ id: d.id, ...(d.data() as Omit<Task, "id">) }))
+    .sort((a, b) => (b.updatedAt?.toMillis() ?? 0) - (a.updatedAt?.toMillis() ?? 0));
 }
 
 export async function listProjectTasks(projectId: string): Promise<Task[]> {
-  const q = query(
-    collection(firestore, "tasks"),
-    where("projectId", "==", projectId),
-    orderBy("position", "asc"),
-    limit(200)
-  );
+  const q = query(collection(firestore, "tasks"), where("projectId", "==", projectId), limit(200));
   const snap = await getDocs(q);
-  return snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Task, "id">) }));
+  return snap.docs
+    .map((d) => ({ id: d.id, ...(d.data() as Omit<Task, "id">) }))
+    .sort((a, b) => a.position - b.position);
 }
 
 export interface CreateTaskInput {

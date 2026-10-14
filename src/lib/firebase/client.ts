@@ -1,11 +1,10 @@
 import { getAuth, GoogleAuthProvider, signInWithRedirect, signOut as firebaseSignOut, onAuthStateChanged, getRedirectResult, User } from "firebase/auth";
-import { getFirestore, doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
-import { auth, db } from "./config";
+import { auth } from "./config";
+import { ensureUserProfile } from "./users";
 
 const googleProvider = new GoogleAuthProvider();
 
 const firebaseAuth = auth!;
-const firebaseDb = db!;
 
 export async function signInWithGoogle() {
   console.log("Starting Google redirect sign-in...");
@@ -24,19 +23,7 @@ export function onAuthChange(callback: (user: User | null) => void) {
 // (which verify the cookie) keep working after a plain Firebase sign-in.
 export async function syncServerSession(user: User) {
   try {
-    const userRef = doc(firebaseDb, "users", user.uid);
-    const userSnap = await getDoc(userRef);
-
-    if (!userSnap.exists()) {
-      await setDoc(userRef, {
-        uid: user.uid,
-        email: user.email,
-        displayName: user.displayName,
-        photoURL: user.photoURL,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      });
-    }
+    await ensureUserProfile(user);
 
     const idToken = await user.getIdToken();
     const res = await fetch("/api/auth/session", {
@@ -63,4 +50,4 @@ export async function drainRedirectError() {
   }
 }
 
-export { auth, db };
+export { auth };

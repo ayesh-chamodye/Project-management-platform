@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { signInWithGoogle } from "@/lib/firebase/client";
+import { createUserProfile } from "@/lib/firebase/users";
 import { User, Loader2, Mail, Lock, Eye, EyeOff } from "lucide-react";
 
 export function RegisterForm() {
@@ -36,6 +37,7 @@ export function RegisterForm() {
       const { createUserWithEmailAndPassword } = await import("firebase/auth");
       const cred = await createUserWithEmailAndPassword(auth, email, password);
       await (cred.user as any).updateProfile({ displayName: name });
+      await createUserProfile(cred.user, { displayName: name });
       router.push("/dashboard");
     } catch (err: any) {
       setError(err?.message?.replace("Firebase: ", "") || "Registration failed. Please try again.");

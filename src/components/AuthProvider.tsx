@@ -3,6 +3,7 @@
 import { type ReactNode, createContext, useContext, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { onAuthChange, drainRedirectError, syncServerSession } from "@/lib/firebase/client";
+import { getUserProfile } from "@/lib/firebase/users";
 
 interface User {
   uid: string;
@@ -32,23 +33,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     drainRedirectError();
 
     return onAuthChange((firebaseUser) => {
-      setUser(
-        firebaseUser
-          ? {
-              uid: firebaseUser.uid,
-              email: firebaseUser.email,
-              displayName: firebaseUser.displayName,
-              photoURL: firebaseUser.photoURL,
-            }
-          : null
-      );
       setLoading(false);
 
-      if (firebaseUser) {
-        syncServerSession(firebaseUser);
-        if (AUTH_PATHS.includes(window.location.pathname)) {
-          router.replace("/dashboard");
-        }
+      if (!firebaseUser) {
+        setUser(null);
+        return;
+      }
+
+      setUser({
+        uid: firebaseUser.uid,
+        email: firebaseUser.email,
+        displayName: firebaseUser.displayName,
+        photoURL: firebaseUser.photoURL,
+      });
+
+      // Firestore holds the user profile; it wins over the auth record once loaded.
+      getUserProfile(firebaseUser.uid)
+        .then((profile) => {
+          if (!profile) return;
+          setUser({
+            uid: firebaseUser.uid,
+            email: firebaseUser.email,
+            displayName: profile.displayName ?? firebaseUser.displayName,
+            photoURL: profile.photoURL ?? firebaseUser.photoURL,
+          });
+        })
+        .catch(() => {});
+
+      syncServerSession(firebaseUser);
+
+      if (AUTH_PATHS.includes(window.location.pathname)) {
+        router.replace("/dashboard");
       }
     });
   }, [router]);

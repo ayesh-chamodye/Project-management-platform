@@ -2,18 +2,48 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { User, Mail, Shield, Loader2, LogOut } from "lucide-react";
+import { updateProfile } from "firebase/auth";
+import { Loader2 } from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
+import { auth } from "@/lib/firebase/config";
+import { getUserProfile, updateUserProfile } from "@/lib/firebase/users";
 
 export default function ProfilePage() {
   const router = useRouter();
   const { user, loading } = useAuth();
   const [name, setName] = useState("");
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [saved, setSaved] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) router.push("/login");
   }, [user, loading, router]);
+
+  useEffect(() => {
+    if (!user) return;
+    getUserProfile(user.uid)
+      .then((profile) => setName(profile?.displayName || user.displayName || ""))
+      .catch(() => setName(user.displayName || ""));
+  }, [user]);
+
+  async function handleSave() {
+    if (!user || !name.trim()) return;
+    setSaving(true);
+    setError("");
+    setSaved(false);
+    try {
+      await updateUserProfile(user.uid, { displayName: name.trim() });
+      if (auth?.currentUser) {
+        await updateProfile(auth.currentUser, { displayName: name.trim() });
+      }
+      setSaved(true);
+    } catch (err: any) {
+      setError(err?.message || "Failed to save profile");
+    } finally {
+      setSaving(false);
+    }
+  }
 
   if (loading) {
     return (
@@ -33,7 +63,7 @@ export default function ProfilePage() {
              {user?.displayName?.[0] || user?.email?.[0] || "U"}
           </div>
           <div>
-              <h2 className="text-xl font-semibold" style={{ color: "var(--color-foreground)" }}>{user?.displayName || "User"}</h2>
+             <h2 className="text-xl font-semibold" style={{ color: "var(--color-foreground)" }}>{user?.displayName || "User"}</h2>
             <p className="text-sm" style={{ color: "var(--color-muted-foreground)" }}>{user?.email}</p>
           </div>
         </div>
@@ -60,7 +90,15 @@ export default function ProfilePage() {
               style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-background)", color: "var(--color-foreground)" }}
             />
           </div>
-          <button disabled={saving} className="btn-primary">Save Changes</button>
+          {error && (
+            <p className="text-sm" style={{ color: "var(--color-danger)" }}>{error}</p>
+          )}
+          {saved && (
+            <p className="text-sm" style={{ color: "var(--color-primary)" }}>Profile updated</p>
+          )}
+          <button onClick={handleSave} disabled={saving || !name.trim()} className="btn-primary">
+            {saving ? <Loader2 className="h-5 w-5 animate-spin" /> : "Save Changes"}
+          </button>
         </div>
       </div>
     </div>

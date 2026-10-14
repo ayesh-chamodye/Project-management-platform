@@ -1,23 +1,23 @@
-import { getAuth, GoogleAuthProvider, signInWithRedirect, getRedirectResult, signOut as firebaseSignOut, onAuthStateChanged, User } from "firebase/auth";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut as firebaseSignOut, onAuthStateChanged, User } from "firebase/auth";
 import { auth } from "./config";
 
 const googleProvider = new GoogleAuthProvider();
 
 const firebaseAuth = auth!;
 
-// Redirect flow: no window.open, so popup blockers cannot interfere.
 export async function signInWithGoogle() {
-  await signInWithRedirect(firebaseAuth, googleProvider);
+  const result = await signInWithPopup(firebaseAuth, googleProvider);
+  return result.user;
 }
 
-// Per the Firebase redirect best practices, resolve the result on page load so
-// redirect failures are surfaced here instead of as unhandled rejections.
-export async function checkRedirectResult() {
-  try {
-    await getRedirectResult(firebaseAuth);
-  } catch (err) {
-    console.error("Google redirect sign-in failed:", err);
+export function googleSignInErrorMessage(err: unknown): string {
+  const code = (err as { code?: string } | null)?.code;
+
+  if (code === "auth/popup-blocked" || code === "auth/popup-closed-by-user") {
+    return "Your ad blocker or popup blocker stopped the Google sign-in window. Turn it off for this site, then try again.";
   }
+
+  return (err as { message?: string })?.message?.replace("Firebase: ", "") || "Google sign-in failed. Please try again.";
 }
 
 export async function signOut() {

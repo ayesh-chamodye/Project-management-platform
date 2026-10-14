@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { signInWithGoogle } from "@/lib/firebase/client";
+import { signInWithGoogle, googleSignInErrorMessage } from "@/lib/firebase/client";
 import { Mail, Lock, Loader2, Eye, EyeOff } from "lucide-react";
 
 export function LoginForm() {
@@ -37,7 +37,7 @@ export function LoginForm() {
     try {
       await signInWithGoogle();
     } catch (err: any) {
-      setError(err?.message?.replace("Firebase: ", "") || "Google sign-in failed. Please try again.");
+      setError(googleSignInErrorMessage(err));
       setLoading(false);
     }
   }

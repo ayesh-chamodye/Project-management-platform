@@ -2,7 +2,7 @@
 
 import { type ReactNode, createContext, useContext, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { onAuthChange, checkRedirectResult } from "@/lib/firebase/client";
+import { onAuthChange } from "@/lib/firebase/client";
 import { ensureUserProfile, getUserProfile } from "@/lib/firebase/users";
 
 interface User {
@@ -30,9 +30,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
-    // Surface redirect failures (e.g. unauthorized domain) on the return page.
-    checkRedirectResult();
-
     return onAuthChange((firebaseUser) => {
       setLoading(false);
 

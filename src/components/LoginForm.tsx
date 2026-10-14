@@ -3,14 +3,9 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { signInWithGoogle, establishSession } from "@/lib/firebase/client";
+import { signInWithGoogle, establishSession, resolveNextPath } from "@/lib/firebase/client";
 import { useAuth } from "@/components/AuthProvider";
 import { Mail, Lock, Loader2, Eye, EyeOff } from "lucide-react";
-
-function resolveNextPath(fallback: string): string {
-  const next = new URLSearchParams(window.location.search).get("next");
-  return next && next.startsWith("/") && !next.startsWith("//") ? next : fallback;
-}
 
 export function LoginForm() {
   const router = useRouter();

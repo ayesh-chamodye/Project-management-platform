@@ -2,7 +2,9 @@
 
 import { type ReactNode, createContext, useContext, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { completeRedirectSignIn } from "@/lib/firebase/client";
+import { completeRedirectSignIn, resolveNextPath } from "@/lib/firebase/client";
+
+const AUTH_PATHS = ["/login", "/register", "/forgot-password"];
 
 interface User {
   uid: string;
@@ -23,10 +25,8 @@ const AuthContext = createContext<AuthContextType>({
   refresh: async () => {},
 });
 
-function resolveNextPath(fallback: string): string {
-  if (typeof window === "undefined") return fallback;
-  const next = new URLSearchParams(window.location.search).get("next");
-  return next && next.startsWith("/") && !next.startsWith("//") ? next : fallback;
+function isAuthPage(pathname: string): boolean {
+  return AUTH_PATHS.includes(pathname);
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -54,13 +54,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async function init() {
       let sessionEstablished = false;
       try {
-        sessionEstablished = await completeRedirectSignIn();
+        const result = await completeRedirectSignIn();
+        sessionEstablished = result.sessionEstablished;
+        if (result.error) {
+          console.error("Sign-in could not be completed:", result.error);
+        }
       } catch (err) {
         console.error("Redirect sign-in error:", err);
       }
       await refresh();
-      if (sessionEstablished) {
-        router.replace(resolveNextPath("/dashboard"));
+      if (sessionEstablished && isAuthPage(window.location.pathname)) {
+        router.replace(resolveNextPath());
       }
     }
     init();

@@ -1,5 +1,4 @@
 import { type ReactNode } from "react";
-import { QueryProvider } from "@/components/QueryProvider";
 import { AuthProvider } from "@/components/AuthProvider";
 import { Inter } from "next/font/google";
 import "./globals.css";
@@ -10,9 +9,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning className={inter.className}>
       <body>
-        <QueryProvider>
-          <AuthProvider>{children}</AuthProvider>
-        </QueryProvider>
+        <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
   );

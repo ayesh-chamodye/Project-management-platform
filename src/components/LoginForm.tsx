@@ -23,7 +23,7 @@ export function LoginForm() {
       const { auth } = await import("@/lib/firebase/config");
       if (!auth) throw new Error("Firebase is not configured");
       await signInWithEmailAndPassword(auth, email, password);
-      router.push("/dashboard");
+      router.push("/");
     } catch (err: any) {
       setError(err?.message?.replace("Firebase: ", "") || "Invalid email or password");
     } finally {

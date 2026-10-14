@@ -38,7 +38,7 @@ export function RegisterForm() {
       const cred = await createUserWithEmailAndPassword(auth, email, password);
       await (cred.user as any).updateProfile({ displayName: name });
       await createUserProfile(cred.user, { displayName: name });
-      router.push("/dashboard");
+      router.push("/");
     } catch (err: any) {
       setError(err?.message?.replace("Firebase: ", "") || "Registration failed. Please try again.");
       setLoading(false);

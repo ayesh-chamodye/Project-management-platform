@@ -2,8 +2,8 @@
 
 import { type ReactNode, createContext, useContext, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { onAuthChange, drainRedirectError, syncServerSession } from "@/lib/firebase/client";
-import { getUserProfile } from "@/lib/firebase/users";
+import { onAuthChange, drainRedirectError } from "@/lib/firebase/client";
+import { ensureUserProfile, getUserProfile } from "@/lib/firebase/users";
 
 interface User {
   uid: string;
@@ -47,7 +47,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         photoURL: firebaseUser.photoURL,
       });
 
-      // Firestore holds the user profile; it wins over the auth record once loaded.
+      // Firestore holds the user profile; create it on first sign-in, then read it.
+      ensureUserProfile(firebaseUser).catch(() => {});
       getUserProfile(firebaseUser.uid)
         .then((profile) => {
           if (!profile) return;
@@ -60,10 +61,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         })
         .catch(() => {});
 
-      syncServerSession(firebaseUser);
-
       if (AUTH_PATHS.includes(window.location.pathname)) {
-        router.replace("/dashboard");
+        router.replace("/");
       }
     });
   }, [router]);
